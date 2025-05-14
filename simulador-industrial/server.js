@@ -2,8 +2,6 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const fs = require('fs');
-// Adicione no início do script
-const graficos = {}; // Objeto para armazenar as instâncias dos gráficos
 
 const app = express();
 const server = http.createServer(app);
@@ -11,7 +9,17 @@ const io = socketIo(server);
 
 // Configuração
 const PORT = 3000;
-const MAQUINAS = ['M-1001', 'M-1002', 'M-1003', 'M-1004'];
+const MAQUINAS = [
+  'Forno de Arco Elétrico', 
+  'Lingoteira Contínua',
+  'Laminação a Quente',
+  'Resfriamento Rápido'
+];
+
+// Variáveis de estado
+let emergenciaAtiva = false;
+let etapaProducao = 'Fusão';
+let consumoEnergia = 0;
 
 // Middleware para arquivos estáticos
 app.use(express.static('public'));
@@ -21,31 +29,74 @@ app.get('/', (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
 });
 
-// Simulação de dados industriais
+// Simulação de dados industriais para produção de aço
 function gerarDadosSensor(maquina) {
-  const baseTemp = 30 + Math.random() * 20 - 5;
-  const pressaoBase = 1.0 + (Math.random() * 2);
+  const padroes = {
+    'Forno de Arco Elétrico': { 
+      baseTemp: 1500, tempVariation: 100, 
+      basePressao: 1.8, vibracaoBase: 4,
+      produtosBase: 2
+    },
+    'Lingoteira Contínua': { 
+      baseTemp: 1200, tempVariation: 50, 
+      basePressao: 2.2, vibracaoBase: 6,
+      produtosBase: 3
+    },
+    'Laminação a Quente': { 
+      baseTemp: 800, tempVariation: 40, 
+      basePressao: 1.5, vibracaoBase: 8,
+      produtosBase: 5
+    },
+    'Resfriamento Rápido': { 
+      baseTemp: 200, tempVariation: 20, 
+      basePressao: 1.0, vibracaoBase: 3,
+      produtosBase: 2
+    }
+  };
+  
+  const padrao = padroes[maquina];
+  const ciclo = Date.now() / 10000;
+  
+  // 5% de chance de falha crítica
+  const falhaCritica = !emergenciaAtiva && Math.random() < 0.05;
+  // 10% de chance de alerta
+  const alerta = !falhaCritica && Math.random() < 0.1;
+  
+  // Cálculo de valores base
+  let temperatura = padrao.baseTemp + (Math.sin(ciclo) * padrao.tempVariation);
+  let pressao = padrao.basePressao + (Math.cos(ciclo * 0.7)) * 0.5;
+  let vibracao = padrao.vibracaoBase + Math.random() * 2;
+  
+  // Ajustes para falhas
+  if (falhaCritica) {
+    temperatura += 300 + Math.random() * 200;
+    pressao += 1.5 + Math.random();
+    vibracao += 5 + Math.random() * 3;
+  } else if (alerta) {
+    temperatura += 100 + Math.random() * 50;
+    pressao += 0.5 + Math.random() * 0.3;
+    vibracao += 2 + Math.random();
+  }
+  
+  // Ajuste de produção baseado na etapa
+  let produtos = padrao.produtosBase;
+  if (etapaProducao === 'Laminação') {
+    produtos += 2;
+  }
   
   return {
     maquina,
-    temperatura: baseTemp + (Math.sin(Date.now()/10000) * 5),
-    pressao: pressaoBase,
-    vibracao: Math.floor(Math.random() * 10) + 1,
+    temperatura: parseFloat(temperatura.toFixed(1)),
+    pressao: parseFloat(pressao.toFixed(2)),
+    vibracao: Math.floor(vibracao),
     timestamp: new Date().toISOString(),
-    produtos_processados: Math.floor(Math.random() * 16) + 5
+    produtos_processados: produtos,
+    status: falhaCritica ? 'FALHA' : alerta ? 'ALERTA' : 'NORMAL',
+    etapa: etapaProducao
   };
 }
 
-// Envia dados para todos os clientes conectados
-function enviarDados() {
-  const dados = {};
-  MAQUINAS.forEach(maquina => {
-    dados[maquina] = gerarDadosSensor(maquina);
-  });
-  io.emit('dados-sensores', dados);
-}
-
-// Controle de ações
+// Controle de ações e emergência
 io.on('connection', (socket) => {
   console.log('Novo cliente conectado');
   
@@ -54,7 +105,61 @@ io.on('connection', (socket) => {
     fs.appendFileSync('controle.log', log);
     console.log(`Ação registrada: ${log.trim()}`);
   });
+  
+  socket.on('ativar-emergencia', () => {
+    if (!emergenciaAtiva) {
+      emergenciaAtiva = true;
+      console.log('EMERGÊNCIA ATIVADA - PARANDO TODAS AS MÁQUINAS');
+      io.emit('sistema-parado', { 
+        motivo: 'emergencia', 
+        timestamp: new Date().toISOString() 
+      });
+      
+      // Simula tempo de parada
+      setTimeout(() => {
+        emergenciaAtiva = false;
+        io.emit('sistema-reiniciando');
+        console.log('Sistema reiniciando após emergência');
+      }, 10000);
+    }
+  });
 });
+
+// Simulação do fluxo de produção
+function simularFluxoProducao() {
+  const etapas = ['Fusão', 'Vazamento', 'Laminação', 'Resfriamento'];
+  const etapaIndex = etapas.indexOf(etapaProducao);
+  etapaProducao = etapas[(etapaIndex + 1) % etapas.length];
+  
+  // Atualiza consumo de energia baseado na etapa
+  switch(etapaProducao) {
+    case 'Fusão':
+      consumoEnergia += 150;
+      break;
+    case 'Laminação':
+      consumoEnergia += 80;
+      break;
+    default:
+      consumoEnergia += 30;
+  }
+  
+  io.emit('etapa-producao', {
+    etapa: etapaProducao,
+    consumoEnergia: consumoEnergia,
+    tempoCiclo: etapaIndex * 2 + 5
+  });
+}
+
+// Envia dados para todos os clientes conectados
+function enviarDados() {
+  if (emergenciaAtiva) return;
+  
+  const dados = {};
+  MAQUINAS.forEach(maquina => {
+    dados[maquina] = gerarDadosSensor(maquina);
+  });
+  io.emit('dados-sensores', dados);
+}
 
 // Inicia o servidor
 server.listen(PORT, () => {
@@ -63,35 +168,7 @@ server.listen(PORT, () => {
   // Atualiza dados a cada 2 segundos
   setInterval(enviarDados, 2000);
   enviarDados(); // Envia imediatamente ao iniciar
+  
+  // Simula mudança de etapas a cada 15 segundos
+  setInterval(simularFluxoProducao, 15000);
 });
-function gerarDadosSensor(maquina) {
-    // Padrões diferentes para cada máquina
-    const padroes = {
-      'M-1001': { baseTemp: 32, tempVariation: 8, basePressao: 1.2 },
-      'M-1002': { baseTemp: 35, tempVariation: 10, basePressao: 1.5 },
-      'M-1003': { baseTemp: 30, tempVariation: 6, basePressao: 1.8 },
-      'M-1004': { baseTemp: 38, tempVariation: 12, basePressao: 2.0 }
-    };
-    
-    const padrao = padroes[maquina] || { baseTemp: 30, tempVariation: 8, basePressao: 1.5 };
-    
-    const ciclo = Date.now() / 10000;
-    const tempVariation = Math.sin(ciclo) * padrao.tempVariation;
-    const pressaoVariation = Math.cos(ciclo * 0.7) * 0.8;
-    
-    // 5% de chance de gerar um valor anormal
-    const anomalia = Math.random() < 0.05;
-    
-    return {
-      maquina,
-      temperatura: anomalia 
-        ? padrao.baseTemp + 15 + Math.random() * 10 
-        : padrao.baseTemp + tempVariation + (Math.random() * 2 - 1),
-      pressao: anomalia
-        ? padrao.basePressao + 1.5 + Math.random() 
-        : padrao.basePressao + pressaoVariation + (Math.random() * 0.2 - 0.1),
-      vibracao: Math.floor(Math.random() * 3) + (anomalia ? 7 : 0),
-      timestamp: new Date().toISOString(),
-      produtos_processados: Math.floor(Math.random() * 5) + 10
-    };
-  }

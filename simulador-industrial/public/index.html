@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel Industrial 4.0</title>
+    <title>Painel Industrial - Produção de Aço</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.0.2"></script>
     <script src="/socket.io/socket.io.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
     <style>
         :root {
             --cor-primaria: #2c3e50;
@@ -35,14 +34,19 @@
             background-color: var(--cor-fundo);
             color: var(--cor-texto);
             padding: 20px;
+            transition: background-color 0.5s;
+        }
+
+        body.emergencia {
+            background-color: #ffebee;
         }
 
         header {
             background: linear-gradient(135deg, var(--cor-primaria), var(--cor-secundaria));
             color: white;
-            padding: 25px;
+            padding: 20px;
             border-radius: 10px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             box-shadow: var(--sombra);
             text-align: center;
             position: relative;
@@ -60,39 +64,152 @@
         }
 
         h1 {
-            font-size: 2.2rem;
+            font-size: 2rem;
             font-weight: 600;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 15px;
+            margin-bottom: 10px;
         }
 
-        h1 i {
-            font-size: 1.8rem;
+        .emergencia-container {
+            margin-top: 15px;
+        }
+
+        .botao-emergencia {
+            background-color: var(--cor-alerta);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 1rem;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #cc0000;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+            font-weight: bold;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .botao-emergencia:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #cc0000;
+        }
+
+        .botao-emergencia::after {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: rgba(255,255,255,0.1);
+            transform: rotate(45deg);
+            animation: emergenciaBrillo 3s infinite;
+        }
+
+        @keyframes emergenciaBrillo {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .painel-controle {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            box-shadow: var(--sombra);
+        }
+
+        .etapa-producao {
+            flex: 2;
+            min-width: 300px;
+        }
+
+        .etapa-producao h3 {
+            color: var(--cor-primaria);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .etapa-producao h3 i {
+            color: var(--cor-secundaria);
+        }
+
+        #etapa-atual {
+            font-weight: bold;
+            color: var(--cor-secundaria);
+        }
+
+        .progresso {
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .barra-progresso {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.5s;
+        }
+
+        .estatisticas {
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            min-width: 200px;
+        }
+
+        .estatistica {
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 8px;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .estatistica i {
+            font-size: 1.2rem;
+            color: var(--cor-secundaria);
+        }
+
+        .estatistica span {
+            font-weight: bold;
+            color: var(--cor-primaria);
         }
 
         .dashboard {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
-            gap: 30px;
-            padding: 10px;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 20px;
+            padding: 5px;
         }
 
         .maquina-card {
             background: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: var(--sombra);
             transition: var(--transicao);
             border: 1px solid var(--cor-borda);
             position: relative;
             overflow: hidden;
-        }
-
-        .maquina-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
         }
 
         .maquina-card::before {
@@ -109,24 +226,24 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
             border-bottom: 1px dashed var(--cor-borda);
         }
 
         .maquina-titulo {
-            font-size: 1.4rem;
+            font-size: 1.2rem;
             font-weight: 600;
             color: var(--cor-primaria);
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .maquina-status {
-            padding: 6px 15px;
+            padding: 5px 12px;
             border-radius: 20px;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -138,6 +255,11 @@
         }
 
         .status-alerta {
+            background-color: var(--cor-aviso);
+            color: white;
+        }
+
+        .status-falha {
             background-color: var(--cor-alerta);
             color: white;
             animation: pulse 1.5s infinite;
@@ -152,14 +274,14 @@
         .indicadores {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-            margin-bottom: 25px;
+            gap: 15px;
+            margin-bottom: 20px;
         }
 
         .indicador {
             background: linear-gradient(to bottom, #f8f9fa, #ffffff);
-            padding: 18px;
-            border-radius: 10px;
+            padding: 15px;
+            border-radius: 8px;
             display: flex;
             flex-direction: column;
             border: 1px solid rgba(0,0,0,0.05);
@@ -173,31 +295,31 @@
         }
 
         .indicador-titulo {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: #636e72;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             font-weight: 500;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
         }
 
         .indicador-titulo i {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: var(--cor-secundaria);
         }
 
         .indicador-valor {
-            font-size: 1.9rem;
+            font-size: 1.6rem;
             font-weight: 700;
             font-family: 'Roboto Mono', monospace;
             color: var(--cor-primaria);
         }
 
         .indicador-unidade {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: #636e72;
-            margin-left: 4px;
+            margin-left: 3px;
             font-weight: 400;
         }
 
@@ -213,9 +335,9 @@
 
         .controles {
             background: linear-gradient(to bottom, #f8f9fa, #ffffff);
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
             border: 1px solid rgba(0,0,0,0.05);
         }
 
@@ -223,7 +345,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 0;
+            padding: 10px 0;
             border-bottom: 1px solid var(--cor-borda);
         }
 
@@ -234,13 +356,13 @@
         .controle-info {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
         }
 
         .controle-icone {
-            font-size: 1.4rem;
-            width: 30px;
-            height: 30px;
+            font-size: 1.2rem;
+            width: 28px;
+            height: 28px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -254,13 +376,13 @@
 
         .controle-detalhes strong {
             display: block;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             color: var(--cor-primaria);
             margin-bottom: 2px;
         }
 
         .controle-detalhes div {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: #636e72;
         }
 
@@ -270,19 +392,19 @@
         }
 
         .status-badge {
-            padding: 6px 14px;
+            padding: 5px 12px;
             border-radius: 15px;
             background-color: #e0e0e0;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 600;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
             transition: var(--transicao);
         }
 
         .status-badge i {
-            font-size: 0.9rem;
+            font-size: 0.8rem;
         }
 
         .status-badge.ativo {
@@ -292,12 +414,12 @@
 
         .chart-container {
             position: relative;
-            height: 260px;
+            height: 220px;
             width: 100%;
-            margin-top: 25px;
+            margin-top: 20px;
             background: white;
-            border-radius: 8px;
-            padding: 15px;
+            border-radius: 6px;
+            padding: 12px;
             border: 1px solid rgba(0,0,0,0.05);
         }
 
@@ -307,16 +429,13 @@
             height: 100% !important;
         }
 
-        /* Responsividade */
         @media (max-width: 768px) {
             .dashboard {
                 grid-template-columns: 1fr;
             }
             
             h1 {
-                font-size: 1.8rem;
-                flex-direction: column;
-                gap: 8px;
+                font-size: 1.5rem;
             }
             
             .indicadores {
@@ -324,11 +443,14 @@
             }
             
             .maquina-card {
-                padding: 20px;
+                padding: 15px;
+            }
+            
+            .painel-controle {
+                flex-direction: column;
             }
         }
 
-        /* Animações */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -337,49 +459,134 @@
         .maquina-card {
             animation: fadeIn 0.5s ease-out forwards;
         }
-
-        /* Efeitos de hover */
-        .indicador-critico:hover {
-            transform: translateY(-3px) scale(1.01);
-            box-shadow: 0 5px 15px rgba(255, 68, 68, 0.1);
-        }
     </style>
 </head>
 <body>
     <header>
         <h1>
             <i class="fas fa-industry"></i>
-            Monitoramento Industrial - Linha de Montagem
+            Monitoramento Siderúrgico
         </h1>
+        <div class="emergencia-container">
+            <button id="botao-emergencia" class="botao-emergencia">
+                <i class="fas fa-power-off"></i> PARADA DE EMERGÊNCIA
+            </button>
+        </div>
     </header>
+    
+    <div class="painel-controle">
+        <div class="etapa-producao">
+            <h3><i class="fas fa-project-diagram"></i> Etapa Atual: <span id="etapa-atual">Carregando...</span></h3>
+            <div class="progresso">
+                <div class="barra-progresso" id="barra-progresso"></div>
+            </div>
+        </div>
+        <div class="estatisticas">
+            <div class="estatistica">
+                <i class="fas fa-bolt"></i>
+                Consumo: <span id="consumo-energia">0</span> kWh
+            </div>
+            <div class="estatistica">
+                <i class="fas fa-clock"></i>
+                Ciclo: <span id="tempo-ciclo">0</span> min
+            </div>
+        </div>
+    </div>
     
     <div class="dashboard" id="dashboard">
         <!-- Máquinas serão inseridas aqui via JavaScript -->
     </div>
 
     <script>
-        // [Seu código JavaScript existente permanece exatamente o mesmo]
-        // Apenas as melhorias de layout foram aplicadas
         const socket = io();
         const historico = {};
         const graficos = {};
         const limites = {
-            temperatura: { min: 20, max: 40, critico: 45 },
-            pressao: { min: 1.0, max: 2.5, critico: 3.0 },
-            vibracao: { max: 7, critico: 9 }
+            temperatura: { 
+                'Forno de Arco Elétrico': { min: 1400, max: 1600, critico: 1700 },
+                'Lingoteira Contínua': { min: 1100, max: 1250, critico: 1300 },
+                'Laminação a Quente': { min: 750, max: 850, critico: 900 },
+                'Resfriamento Rápido': { min: 150, max: 250, critico: 300 },
+                default: { min: 0, max: 100, critico: 120 }
+            },
+            pressao: { 
+                min: 1.0, max: 2.5, critico: 3.0 
+            },
+            vibracao: { 
+                max: 7, critico: 9 
+            }
         };
         
+        // Configura o botão de emergência
+        document.getElementById('botao-emergencia').addEventListener('click', () => {
+            if(confirm('ATENÇÃO: Isso parará toda a produção. Confirmar parada de emergência?')) {
+                socket.emit('ativar-emergencia');
+                // Feedback visual imediato
+                document.body.classList.add('emergencia');
+                document.querySelectorAll('.maquina-card').forEach(card => {
+                    card.style.opacity = '0.7';
+                });
+            }
+        });
+        
+        // Handler para eventos de emergência
+        socket.on('sistema-parado', (data) => {
+            console.log('Sistema parado:', data);
+            document.querySelectorAll('.maquina-card').forEach(card => {
+                card.style.opacity = '0.7';
+                const statusElement = card.querySelector('.maquina-status');
+                if (statusElement) {
+                    statusElement.textContent = 'EMERGÊNCIA';
+                    statusElement.className = 'maquina-status status-falha';
+                }
+            });
+        });
+        
+        socket.on('sistema-reiniciando', () => {
+            console.log('Sistema reiniciando...');
+            document.body.classList.remove('emergencia');
+            document.querySelectorAll('.maquina-card').forEach(card => {
+                card.style.opacity = '1';
+            });
+        });
+        
+        // Atualiza etapa de produção
+        socket.on('etapa-producao', (data) => {
+            console.log('Nova etapa:', data.etapa);
+            document.getElementById('etapa-atual').textContent = data.etapa;
+            document.getElementById('consumo-energia').textContent = data.consumoEnergia;
+            document.getElementById('tempo-ciclo').textContent = data.tempoCiclo;
+            
+            // Anima a barra de progresso
+            const barra = document.getElementById('barra-progresso');
+            barra.style.width = '0%';
+            setTimeout(() => {
+                barra.style.width = '100%';
+            }, 50);
+        });
+        
+        // Handler para dados dos sensores
         socket.on('dados-sensores', (dados) => {
             for (const maquina in dados) {
                 const info = dados[maquina];
-                const statusTemp = getStatus(info.temperatura, limites.temperatura);
+                const limitesTemp = limites.temperatura[maquina] || limites.temperatura.default;
+                
+                const statusTemp = getStatus(info.temperatura, limitesTemp);
                 const statusPressao = getStatus(info.pressao, limites.pressao);
                 const statusVibracao = getStatus(info.vibracao, limites.vibracao);
-                const statusGeral = (statusTemp.critico || statusPressao.critico || statusVibracao.critico) 
-                    ? 'status-alerta' : 'status-normal';
+                
+                let statusGeral;
+                if (info.status === 'FALHA') {
+                    statusGeral = 'status-falha';
+                } else if (info.status === 'ALERTA' || statusTemp.alerta || statusPressao.alerta || statusVibracao.alerta) {
+                    statusGeral = 'status-alerta';
+                } else {
+                    statusGeral = 'status-normal';
+                }
                 
                 let card = document.getElementById(`maquina-${maquina}`);
                 if (!card) {
+                    // Cria novo card se não existir
                     card = document.createElement('div');
                     card.className = 'maquina-card';
                     card.id = `maquina-${maquina}`;
@@ -389,7 +596,7 @@
                                 <i class="fas fa-cog"></i> ${maquina}
                             </div>
                             <div class="maquina-status ${statusGeral}">
-                                ${statusGeral === 'status-alerta' ? 'ALERTA' : 'NORMAL'}
+                                ${info.status === 'FALHA' ? 'FALHA' : info.status === 'ALERTA' ? 'ALERTA' : 'NORMAL'}
                             </div>
                         </div>
                         
@@ -428,7 +635,7 @@
                         </div>
                         
                         <div class="controles" id="controles-${maquina}">
-                            ${gerarControles(maquina, statusTemp, statusPressao)}
+                            ${gerarControles(maquina, statusTemp, statusPressao, info.status)}
                         </div>
                         
                         <div class="chart-container">
@@ -437,47 +644,54 @@
                     
                     document.getElementById('dashboard').appendChild(card);
                 } else {
-                    // Atualiza apenas os elementos necessários
-                    card.querySelector(`.maquina-status`).className = `maquina-status ${statusGeral}`;
-                    card.querySelector(`.maquina-status`).textContent = statusGeral === 'status-alerta' ? 'ALERTA' : 'NORMAL';
+                    // Atualiza card existente
+                    const statusElement = card.querySelector('.maquina-status');
+                    if (statusElement) {
+                        statusElement.className = `maquina-status ${statusGeral}`;
+                        statusElement.textContent = info.status === 'FALHA' ? 'FALHA' : 
+                                                 info.status === 'ALERTA' ? 'ALERTA' : 'NORMAL';
+                    }
                     
-                    document.getElementById(`indicador-temp-${maquina}`).innerHTML = `
-                        <span class="indicador-titulo"><i class="fas fa-thermometer-half"></i> Temperatura</span>
-                        <div>
-                            <span class="indicador-valor">${info.temperatura.toFixed(1)}</span>
-                            <span class="indicador-unidade">°C</span>
-                        </div>`;
-                    document.getElementById(`indicador-temp-${maquina}`).className = `indicador ${statusTemp.classe}`;
+                    updateIndicator(`indicador-temp-${maquina}`, 
+                                  'Temperatura', 'fa-thermometer-half', 
+                                  info.temperatura.toFixed(1), '°C', 
+                                  statusTemp.classe);
                     
-                    document.getElementById(`indicador-pressao-${maquina}`).innerHTML = `
-                        <span class="indicador-titulo"><i class="fas fa-tachometer-alt"></i> Pressão</span>
-                        <div>
-                            <span class="indicador-valor">${info.pressao.toFixed(2)}</span>
-                            <span class="indicador-unidade">bar</span>
-                        </div>`;
-                    document.getElementById(`indicador-pressao-${maquina}`).className = `indicador ${statusPressao.classe}`;
+                    updateIndicator(`indicador-pressao-${maquina}`, 
+                                  'Pressão', 'fa-tachometer-alt', 
+                                  info.pressao.toFixed(2), 'bar', 
+                                  statusPressao.classe);
                     
-                    document.getElementById(`indicador-vibracao-${maquina}`).innerHTML = `
-                        <span class="indicador-titulo"><i class="fas fa-vibration"></i> Vibração</span>
-                        <div>
-                            <span class="indicador-valor">${info.vibracao}</span>
-                            <span class="indicador-unidade">/10</span>
-                        </div>`;
-                    document.getElementById(`indicador-vibracao-${maquina}`).className = `indicador ${statusVibracao.classe}`;
+                    updateIndicator(`indicador-vibracao-${maquina}`, 
+                                  'Vibração', 'fa-vibration', 
+                                  info.vibracao, '/10', 
+                                  statusVibracao.classe);
                     
-                    document.getElementById(`indicador-produtos-${maquina}`).innerHTML = `
-                        <span class="indicador-titulo"><i class="fas fa-boxes"></i> Produtos</span>
-                        <div>
-                            <span class="indicador-valor">${info.produtos_processados}</span>
-                            <span class="indicador-unidade">unid.</span>
-                        </div>`;
+                    updateIndicator(`indicador-produtos-${maquina}`, 
+                                  'Produtos', 'fa-boxes', 
+                                  info.produtos_processados, 'unid.', 
+                                  '');
                     
-                    document.getElementById(`controles-${maquina}`).innerHTML = gerarControles(maquina, statusTemp, statusPressao);
+                    document.getElementById(`controles-${maquina}`).innerHTML = 
+                        gerarControles(maquina, statusTemp, statusPressao, info.status);
                 }
                 
                 atualizarGrafico(maquina, info);
             }
         });
+        
+        function updateIndicator(id, title, icon, value, unit, classe) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.innerHTML = `
+                    <span class="indicador-titulo"><i class="fas ${icon}"></i> ${title}</span>
+                    <div>
+                        <span class="indicador-valor">${value}</span>
+                        <span class="indicador-unidade">${unit}</span>
+                    </div>`;
+                element.className = `indicador ${classe}`;
+            }
+        }
         
         function getStatus(valor, limite) {
             const critico = valor > limite.critico;
@@ -490,21 +704,23 @@
             };
         }
         
-        function gerarControles(maquina, statusTemp, statusPressao) {
+        function gerarControles(maquina, statusTemp, statusPressao, statusGeral) {
             let html = '';
             
             // Controle de temperatura
             html += `
             <div class="controle-item">
                 <div class="controle-info">
-                    <div class="controle-icone ${statusTemp.critico ? 'fa-fire' : 'fa-temperature-low'}"></div>
+                    <div class="controle-icone ${statusTemp.critico ? 'fa-fire' : 
+                                              statusGeral === 'FALHA' ? 'fa-exclamation-triangle' : 
+                                              'fa-temperature-low'}"></div>
                     <div class="controle-detalhes">
                         <strong>Sistema de Resfriamento</strong>
-                        <div>Status: ${statusTemp.texto}</div>
+                        <div>Status: ${statusGeral === 'FALHA' ? 'FALHA' : statusTemp.texto}</div>
                     </div>
                 </div>
                 <div class="controle-acoes">
-                    ${statusTemp.alerta || statusTemp.critico 
+                    ${statusTemp.alerta || statusTemp.critico || statusGeral === 'FALHA'
                         ? '<span class="status-badge ativo"><i class="fas fa-power-off"></i> LIGADO</span>' 
                         : '<span class="status-badge"><i class="fas fa-power-off"></i> DESLIGADO</span>'}
                 </div>
@@ -514,14 +730,16 @@
             html += `
             <div class="controle-item">
                 <div class="controle-info">
-                    <div class="controle-icone ${statusPressao.critico ? 'fa-exclamation-triangle' : 'fa-tachometer-alt'}"></div>
+                    <div class="controle-icone ${statusPressao.critico ? 'fa-exclamation-triangle' : 
+                                                statusGeral === 'FALHA' ? 'fa-exclamation-circle' : 
+                                                'fa-tachometer-alt'}"></div>
                     <div class="controle-detalhes">
                         <strong>Válvula de Alívio</strong>
-                        <div>Status: ${statusPressao.texto}</div>
+                        <div>Status: ${statusGeral === 'FALHA' ? 'FALHA' : statusPressao.texto}</div>
                     </div>
                 </div>
                 <div class="controle-acoes">
-                    ${statusPressao.alerta || statusPressao.critico 
+                    ${statusPressao.alerta || statusPressao.critico || statusGeral === 'FALHA'
                         ? '<span class="status-badge ativo"><i class="fas fa-power-off"></i> ABERTA</span>' 
                         : '<span class="status-badge"><i class="fas fa-power-off"></i> FECHADA</span>'}
                 </div>
@@ -537,7 +755,7 @@
                     pressao: [],
                     vibracao: [],
                     labels: [],
-                    maxPontos: 15
+                    maxPontos: 20
                 };
             }
             
@@ -546,17 +764,21 @@
             // Adiciona novos dados
             historicoMaquina.temperatura.push(dados.temperatura);
             historicoMaquina.pressao.push(dados.pressao);
+            historicoMaquina.vibracao.push(dados.vibracao);
             historicoMaquina.labels.push(new Date().toLocaleTimeString());
             
             // Remove dados antigos se exceder o máximo
             if (historicoMaquina.temperatura.length > historicoMaquina.maxPontos) {
                 historicoMaquina.temperatura.shift();
                 historicoMaquina.pressao.shift();
+                historicoMaquina.vibracao.shift();
                 historicoMaquina.labels.shift();
             }
             
             const ctx = document.getElementById(`chart-${maquina}`)?.getContext('2d');
             if (!ctx) return;
+            
+            const limitesTemp = limites.temperatura[maquina] || limites.temperatura.default;
             
             if (!graficos[maquina]) {
                 // Configuração inicial do gráfico
@@ -594,29 +816,42 @@
                         plugins: {
                             annotation: {
                                 annotations: {
-                                    linhaTemperatura: {
+                                    linhaTempMax: {
                                         type: 'line',
-                                        yMin: limites.temperatura.max,
-                                        yMax: limites.temperatura.max,
+                                        yMin: limitesTemp.max,
+                                        yMax: limitesTemp.max,
                                         borderColor: 'orange',
-                                        borderWidth: 2,
+                                        borderWidth: 1,
                                         borderDash: [6, 6],
                                         label: {
-                                            content: 'Limite Temp',
+                                            content: 'Limite',
                                             enabled: true,
                                             position: 'right'
                                         }
                                     },
-                                    linhaPressao: {
+                                    linhaTempCritico: {
+                                        type: 'line',
+                                        yMin: limitesTemp.critico,
+                                        yMax: limitesTemp.critico,
+                                        borderColor: 'red',
+                                        borderWidth: 1,
+                                        borderDash: [6, 6],
+                                        label: {
+                                            content: 'Crítico',
+                                            enabled: true,
+                                            position: 'right'
+                                        }
+                                    },
+                                    linhaPressaoMax: {
                                         type: 'line',
                                         yMin: limites.pressao.max,
                                         yMax: limites.pressao.max,
                                         borderColor: 'orange',
-                                        borderWidth: 2,
+                                        borderWidth: 1,
                                         borderDash: [6, 6],
                                         yAxisID: 'y1',
                                         label: {
-                                            content: 'Limite Pressão',
+                                            content: 'Limite',
                                             enabled: true,
                                             position: 'right'
                                         }
@@ -643,8 +878,8 @@
                                     display: true,
                                     text: 'Temperatura (°C)'
                                 },
-                                min: 20,
-                                max: 60
+                                min: Math.max(0, limitesTemp.min - 100),
+                                max: limitesTemp.critico + 100
                             },
                             y1: {
                                 type: 'linear',
@@ -655,7 +890,7 @@
                                     text: 'Pressão (bar)'
                                 },
                                 min: 0.5,
-                                max: 3.5,
+                                max: limites.pressao.critico + 0.5,
                                 grid: {
                                     drawOnChartArea: false
                                 }
