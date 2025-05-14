@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Hidráulico</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Sistema Hidráulico Automatizado</h1>
+        
+        <div class="system-container">
+            <!-- Caixa d'água -->
+            <div class="tank-container">
+                <div class="tank-label">Caixa d'Água</div>
+                <div class="tank" id="caixa">
+                    <div class="water" style="height: <%= system.caixa %>%;"></div>
+                    <div class="water-level"><%= system.caixa %>%</div>
+                    <div class="sensor <%= system.sc ? 'on' : 'off' %>" id="sc">SC</div>
+                </div>
+            </div>
+            
+            <!-- Bomba -->
+            <div class="pump-container">
+                <div class="pump <%= system.bomba ? 'on' : 'off' %>" id="bomba">
+                    <img src="/images/pump.svg" alt="Bomba">
+                    <div class="pump-label">Bomba: <%= system.bomba ? 'LIGADA' : 'DESLIGADA' %></div>
+                </div>
+            </div>
+            
+            <!-- Reservatório -->
+            <div class="tank-container">
+                <div class="tank-label">Reservatório</div>
+                <div class="tank" id="reservatorio">
+                    <div class="water" style="height: <%= system.reservatorio %>%;"></div>
+                    <div class="water-level"><%= system.reservatorio %>%</div>
+                    <div class="sensor <%= system.sa ? 'on' : 'off' %>" id="sa">SA</div>
+                    <div class="sensor <%= system.sb ? 'on' : 'off' %>" id="sb">SB</div>
+                </div>
+            </div>
+            
+            <!-- Torneira -->
+            <div class="valve-container">
+                <div class="valve <%= system.torneira ? 'on' : 'off' %>" id="torneira">
+                    <img src="/images/valve.svg" alt="Torneira">
+                    <div class="valve-label">Torneira: <%= system.torneira ? 'ABERTA' : 'FECHADA' %></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="status-container">
+            <div class="status-title">Status dos Sensores:</div>
+            <div class="sensor-status <%= system.sa ? 'on' : 'off' %>">SA: <%= system.sa ? 'ATIVADO' : 'DESATIVADO' %></div>
+            <div class="sensor-status <%= system.sb ? 'on' : 'off' %>">SB: <%= system.sb ? 'ATIVADO' : 'DESATIVADO' %></div>
+            <div class="sensor-status <%= system.sc ? 'on' : 'off' %>">SC: <%= system.sc ? 'ATIVADO' : 'DESATIVADO' %></div>
+        </div>
+        
+        <div class="footer">
+            Curso: Técnico de Informática para Internet<br>
+            Aluno: Théo Oliveira Quintão
+        </div>
+    </div>
+    
+    <script src="/js/app.js"></script>
+</body>
+</html>

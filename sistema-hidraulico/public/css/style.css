@@ -1,0 +1,213 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Roboto', sans-serif;
+}
+
+body {
+    background-color: #f0f8ff;
+    color: #333;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #2c3e50;
+}
+
+.system-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.tank-container {
+    text-align: center;
+    margin: 10px;
+}
+
+.tank-label {
+    font-weight: bold;
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+.tank {
+    width: 150px;
+    height: 250px;
+    border: 3px solid #2c3e50;
+    border-radius: 0 0 10px 10px;
+    position: relative;
+    background-color: #ecf0f1;
+    overflow: hidden;
+}
+
+.water {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    background-color: #3498db;
+    transition: height 0.5s ease;
+}
+
+.water-level {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 2px #000;
+    z-index: 1;
+}
+
+.sensor {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+    z-index: 2;
+}
+
+.sensor.on {
+    background-color: #2ecc71;
+    box-shadow: 0 0 10px #2ecc71;
+}
+
+.sensor.off {
+    background-color: #e74c3c;
+}
+
+#sa {
+    top: 30%;
+    left: -15px;
+}
+
+#sb {
+    top: 70%;
+    left: -15px;
+}
+
+#sc {
+    top: 80%;
+    right: -15px;
+}
+
+.pump-container, .valve-container {
+    text-align: center;
+    margin: 20px;
+}
+
+.pump, .valve {
+    padding: 15px;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.pump img, .valve img {
+    width: 80px;
+    height: 80px;
+    filter: grayscale(100%);
+    transition: all 0.3s ease;
+}
+
+.pump.on img {
+    filter: grayscale(0%) drop-shadow(0 0 5px #2ecc71);
+    animation: pulse 1s infinite;
+}
+
+.valve.on img {
+    filter: grayscale(0%) drop-shadow(0 0 5px #2ecc71);
+    animation: rotate 2s infinite;
+}
+
+.pump.off, .valve.off {
+    background-color: #f1c40f;
+}
+
+.pump.on {
+    background-color: #2ecc71;
+}
+
+.valve.on {
+    background-color: #2ecc71;
+}
+
+.pump-label, .valve-label {
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+.status-container {
+    background-color: #ecf0f1;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.status-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+.sensor-status {
+    padding: 8px;
+    margin: 5px 0;
+    border-radius: 5px;
+    font-weight: bold;
+}
+
+.sensor-status.on {
+    background-color: #2ecc71;
+    color: white;
+}
+
+.sensor-status.off {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.footer {
+    text-align: center;
+    margin-top: 30px;
+    padding-top: 15px;
+    border-top: 1px solid #bdc3c7;
+    color: #7f8c8d;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+@keyframes rotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+    .system-container {
+        flex-direction: column;
+    }
+    
+    .tank {
+        width: 120px;
+        height: 200px;
+    }
+}
