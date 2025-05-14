@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Industrial 4.0</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.0.2"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --cor-alerta: #ff4444;
+            --cor-normal: #4CAF50;
+            --cor-aviso: #ffbb33;
+            --cor-fundo: #f5f7fa;
+            --cor-texto: #333;
+            --cor-borda: #ddd;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--cor-fundo);
+            color: var(--cor-texto);
+        }
+
+        header {
+            background: linear-gradient(135deg, #2c3e50, #4ca1af);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        h1::before {
+            content: "⚙️";
+            margin-right: 15px;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+            gap: 25px;
+            padding: 20px;
+        }
+
+        .maquina-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease;
+        }
+
+        .maquina-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .maquina-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--cor-borda);
+        }
+
+        .maquina-titulo {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .maquina-status {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-normal {
+            background-color: var(--cor-normal);
+            color: white;
+        }
+
+        .status-alerta {
+            background-color: var(--cor-alerta);
+            color: white;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .indicadores {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .indicador {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .indicador-titulo {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
+        .indicador-valor {
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+
+        .indicador-unidade {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-left: 3px;
+        }
+
+        .indicador-critico {
+            background-color: #ffebee;
+            border-left: 4px solid var(--cor-alerta);
+        }
+
+        .indicador-alerta {
+            background-color: #fff8e1;
+            border-left: 4px solid var(--cor-aviso);
+        }
+
+        .controles {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .controle-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .controle-item:last-child {
+            border-bottom: none;
+        }
+
+        .controle-info {
+            display: flex;
+            align-items: center;
+        }
+
+        .controle-icone {
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+
+        .controle-acoes {
+            display: flex;
+            align-items: center;
+        }
+
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 15px;
+            background-color: #e0e0e0;
+            font-size: 0.8rem;
+        }
+
+        .status-badge.ativo {
+            background-color: var(--cor-normal);
+            color: white;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 250px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .temperatura-alerta {
+            position: relative;
+        }
+
+        .temperatura-alerta::after {
+            content: "⚠️";
+            position: absolute;
+            right: -25px;
+            top: 50%;
+            transform: translateY(-50%);
+            animation: shake 0.5s infinite;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateY(-50%) rotate(0deg); }
+            25% { transform: translateY(-50%) rotate(5deg); }
+            75% { transform: translateY(-50%) rotate(-5deg); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Monitoramento Industrial - Linha de Montagem</h1>
+    </header>
+    
+    <div class="dashboard" id="dashboard">
+        <!-- Máquinas serão inseridas aqui via JavaScript -->
+    </div>
+
+    <script>
+        const socket = io();
+        const historico = {};
+        const graficos = {}; // Objeto para armazenar as instâncias dos gráficos
+        const limites = {
+            temperatura: { min: 20, max: 40, critico: 45 },
+            pressao: { min: 1.0, max: 2.5, critico: 3.0 },
+            vibracao: { max: 7, critico: 9 }
+        };
+        
+        socket.on('dados-sensores', (dados) => {
+            for (const maquina in dados) {
+                const info = dados[maquina];
+                const statusTemp = getStatus(info.temperatura, limites.temperatura);
+                const statusPressao = getStatus(info.pressao, limites.pressao);
+                const statusVibracao = getStatus(info.vibracao, limites.vibracao);
+                const statusGeral = (statusTemp.critico || statusPressao.critico || statusVibracao.critico) 
+                    ? 'status-alerta' : 'status-normal';
+                
+                // Atualiza ou cria o card da máquina
+                let card = document.getElementById(`maquina-${maquina}`);
+                if (!card) {
+                    card = document.createElement('div');
+                    card.className = 'maquina-card';
+                    card.id = `maquina-${maquina}`;
+                    card.innerHTML = `
+                        <div class="maquina-header">
+                            <div class="maquina-titulo">
+                                <i class="fas fa-industry"></i> ${maquina}
+                            </div>
+                            <div class="maquina-status ${statusGeral}">
+                                ${statusGeral === 'status-alerta' ? 'ALERTA' : 'NORMAL'}
+                            </div>
+                        </div>
+                        
+                        <div class="indicadores">
+                            <div class="indicador ${statusTemp.classe}" id="indicador-temp-${maquina}">
+                                <span class="indicador-titulo">Temperatura</span>
+                                <div>
+                                    <span class="indicador-valor">${info.temperatura.toFixed(1)}</span>
+                                    <span class="indicador-unidade">°C</span>
+                                </div>
+                            </div>
+                            
+                            <div class="indicador ${statusPressao.classe}" id="indicador-pressao-${maquina}">
+                                <span class="indicador-titulo">Pressão</span>
+                                <div>
+                                    <span class="indicador-valor">${info.pressao.toFixed(2)}</span>
+                                    <span class="indicador-unidade">bar</span>
+                                </div>
+                            </div>
+                            
+                            <div class="indicador ${statusVibracao.classe}" id="indicador-vibracao-${maquina}">
+                                <span class="indicador-titulo">Vibração</span>
+                                <div>
+                                    <span class="indicador-valor">${info.vibracao}</span>
+                                    <span class="indicador-unidade">/10</span>
+                                </div>
+                            </div>
+                            
+                            <div class="indicador" id="indicador-produtos-${maquina}">
+                                <span class="indicador-titulo">Produtos</span>
+                                <div>
+                                    <span class="indicador-valor">${info.produtos_processados}</span>
+                                    <span class="indicador-unidade">unid.</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="controles" id="controles-${maquina}">
+                            ${gerarControles(maquina, statusTemp, statusPressao)}
+                        </div>
+                        
+                        <div class="chart-container">
+                            <canvas id="chart-${maquina}"></canvas>
+                        </div>`;
+                    
+                    document.getElementById('dashboard').appendChild(card);
+                } else {
+                    // Atualiza apenas os elementos necessários
+                    card.querySelector(`.maquina-status`).className = `maquina-status ${statusGeral}`;
+                    card.querySelector(`.maquina-status`).textContent = statusGeral === 'status-alerta' ? 'ALERTA' : 'NORMAL';
+                    
+                    document.getElementById(`indicador-temp-${maquina}`).innerHTML = `
+                        <span class="indicador-titulo">Temperatura</span>
+                        <div>
+                            <span class="indicador-valor">${info.temperatura.toFixed(1)}</span>
+                            <span class="indicador-unidade">°C</span>
+                        </div>`;
+                    document.getElementById(`indicador-temp-${maquina}`).className = `indicador ${statusTemp.classe}`;
+                    
+                    document.getElementById(`indicador-pressao-${maquina}`).innerHTML = `
+                        <span class="indicador-titulo">Pressão</span>
+                        <div>
+                            <span class="indicador-valor">${info.pressao.toFixed(2)}</span>
+                            <span class="indicador-unidade">bar</span>
+                        </div>`;
+                    document.getElementById(`indicador-pressao-${maquina}`).className = `indicador ${statusPressao.classe}`;
+                    
+                    document.getElementById(`indicador-vibracao-${maquina}`).innerHTML = `
+                        <span class="indicador-titulo">Vibração</span>
+                        <div>
+                            <span class="indicador-valor">${info.vibracao}</span>
+                            <span class="indicador-unidade">/10</span>
+                        </div>`;
+                    document.getElementById(`indicador-vibracao-${maquina}`).className = `indicador ${statusVibracao.classe}`;
+                    
+                    document.getElementById(`indicador-produtos-${maquina}`).innerHTML = `
+                        <span class="indicador-titulo">Produtos</span>
+                        <div>
+                            <span class="indicador-valor">${info.produtos_processados}</span>
+                            <span class="indicador-unidade">unid.</span>
+                        </div>`;
+                    
+                    document.getElementById(`controles-${maquina}`).innerHTML = gerarControles(maquina, statusTemp, statusPressao);
+                }
+                
+                atualizarGrafico(maquina, info);
+            }
+        });
+        
+        function getStatus(valor, limite) {
+            const critico = valor > limite.critico;
+            const alerta = valor > limite.max && !critico;
+            return {
+                critico,
+                alerta,
+                classe: critico ? 'indicador-critico' : alerta ? 'indicador-alerta' : '',
+                texto: critico ? 'CRÍTICO' : alerta ? 'ALERTA' : 'NORMAL'
+            };
+        }
+        
+        function gerarControles(maquina, statusTemp, statusPressao) {
+            let html = '';
+            
+            // Controle de temperatura
+            html += `
+            <div class="controle-item">
+                <div class="controle-info">
+                    <div class="controle-icone ${statusTemp.critico ? 'fa-fire' : 'fa-temperature-low'}"></div>
+                    <div>
+                        <strong>Sistema de Resfriamento</strong>
+                        <div>${statusTemp.texto}</div>
+                    </div>
+                </div>
+                <div class="controle-acoes">
+                    ${statusTemp.alerta || statusTemp.critico 
+                        ? '<span class="status-badge ativo"><i class="fas fa-power-off"></i> LIGADO</span>' 
+                        : '<span class="status-badge"><i class="fas fa-power-off"></i> DESLIGADO</span>'}
+                </div>
+            </div>`;
+            
+            // Controle de pressão
+            html += `
+            <div class="controle-item">
+                <div class="controle-info">
+                    <div class="controle-icone ${statusPressao.critico ? 'fa-exclamation-triangle' : 'fa-tachometer-alt'}"></i></div>
+                    <div>
+                        <strong>Válvula de Alívio</strong>
+                        <div>${statusPressao.texto}</div>
+                    </div>
+                </div>
+                <div class="controle-acoes">
+                    ${statusPressao.alerta || statusPressao.critico 
+                        ? '<span class="status-badge ativo"><i class="fas fa-power-off"></i> ABERTA</span>' 
+                        : '<span class="status-badge"><i class="fas fa-power-off"></i> FECHADA</span>'}
+                </div>
+            </div>`;
+            
+            return html;
+        }
+        
+        function atualizarGrafico(maquina, dados) {
+            if (!historico[maquina]) {
+                historico[maquina] = {
+                    temperatura: [],
+                    pressao: [],
+                    vibracao: [],
+                    labels: [],
+                    maxPontos: 15
+                };
+            }
+            
+            const historicoMaquina = historico[maquina];
+            
+            // Adiciona novos dados
+            historicoMaquina.temperatura.push(dados.temperatura);
+            historicoMaquina.pressao.push(dados.pressao);
+            historicoMaquina.labels.push(new Date().toLocaleTimeString());
+            
+            // Remove dados antigos se exceder o máximo
+            if (historicoMaquina.temperatura.length > historicoMaquina.maxPontos) {
+                historicoMaquina.temperatura.shift();
+                historicoMaquina.pressao.shift();
+                historicoMaquina.labels.shift();
+            }
+            
+            const ctx = document.getElementById(`chart-${maquina}`)?.getContext('2d');
+            if (!ctx) return;
+            
+            if (!graficos[maquina]) {
+                // Configuração inicial do gráfico
+                graficos[maquina] = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: historicoMaquina.labels,
+                        datasets: [
+                            {
+                                label: 'Temperatura °C',
+                                data: historicoMaquina.temperatura,
+                                borderColor: 'rgb(255, 99, 132)',
+                                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                                tension: 0.3,
+                                fill: true,
+                                yAxisID: 'y'
+                            },
+                            {
+                                label: 'Pressão bar',
+                                data: historicoMaquina.pressao,
+                                borderColor: 'rgb(54, 162, 235)',
+                                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                                tension: 0.3,
+                                fill: true,
+                                yAxisID: 'y1'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: {
+                            duration: 0 // Desativa animações para atualizações
+                        },
+                        plugins: {
+                            annotation: {
+                                annotations: {
+                                    linhaTemperatura: {
+                                        type: 'line',
+                                        yMin: limites.temperatura.max,
+                                        yMax: limites.temperatura.max,
+                                        borderColor: 'orange',
+                                        borderWidth: 2,
+                                        borderDash: [6, 6],
+                                        label: {
+                                            content: 'Limite Temp',
+                                            enabled: true,
+                                            position: 'right'
+                                        }
+                                    },
+                                    linhaPressao: {
+                                        type: 'line',
+                                        yMin: limites.pressao.max,
+                                        yMax: limites.pressao.max,
+                                        borderColor: 'orange',
+                                        borderWidth: 2,
+                                        borderDash: [6, 6],
+                                        yAxisID: 'y1',
+                                        label: {
+                                            content: 'Limite Pressão',
+                                            enabled: true,
+                                            position: 'right'
+                                        }
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) label += ': ';
+                                        label += context.parsed.y.toFixed(2);
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Temperatura (°C)'
+                                },
+                                min: 20,
+                                max: 60
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Pressão (bar)'
+                                },
+                                min: 0.5,
+                                max: 3.5,
+                                grid: {
+                                    drawOnChartArea: false
+                                }
+                            }
+                        }
+                    }
+                });
+            } else {
+                // Atualiza apenas os dados do gráfico existente
+                graficos[maquina].data.labels = historicoMaquina.labels;
+                graficos[maquina].data.datasets[0].data = historicoMaquina.temperatura;
+                graficos[maquina].data.datasets[1].data = historicoMaquina.pressao;
+                graficos[maquina].update();
+            }
+        }
+    </script>
+</body>
+</html>

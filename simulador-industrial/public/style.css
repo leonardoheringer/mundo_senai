@@ -1,0 +1,190 @@
+:root {
+    --cor-alerta: #ff4444;
+    --cor-normal: #4CAF50;
+    --cor-aviso: #ffbb33;
+    --cor-fundo: #f5f7fa;
+    --cor-texto: #333;
+    --cor-borda: #ddd;
+  }
+  
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: var(--cor-fundo);
+    color: var(--cor-texto);
+  }
+  
+  header {
+    background: linear-gradient(135deg, #2c3e50, #4ca1af);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  h1 {
+    margin: 0;
+    font-size: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  h1::before {
+    content: "⚙️";
+    margin-right: 15px;
+  }
+  
+  .dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+    gap: 25px;
+    padding: 20px;
+  }
+  
+  .maquina-card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease;
+  }
+  
+  .maquina-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+  }
+  
+  .maquina-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--cor-borda);
+  }
+  
+  .maquina-titulo {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #2c3e50;
+  }
+  
+  .maquina-status {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+  
+  .status-normal {
+    background-color: var(--cor-normal);
+    color: white;
+  }
+  
+  .status-alerta {
+    background-color: var(--cor-alerta);
+    color: white;
+    animation: pulse 1.5s infinite;
+  }
+  
+  @keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+  }
+  
+  .indicadores {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .indicador {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .indicador-titulo {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-bottom: 5px;
+  }
+  
+  .indicador-valor {
+    font-size: 1.8rem;
+    font-weight: bold;
+  }
+  
+  .indicador-unidade {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-left: 3px;
+  }
+  
+  .controles {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 15px;
+  }
+  
+  .controle-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #e9ecef;
+  }
+  
+  .controle-item:last-child {
+    border-bottom: none;
+  }
+  
+  .controle-info {
+    display: flex;
+    align-items: center;
+  }
+  
+  .controle-icone {
+    margin-right: 10px;
+    font-size: 1.2rem;
+  }
+  
+  .controle-acoes {
+    display: flex;
+    align-items: center;
+  }
+  
+  .chart-container {
+    position: relative;
+    height: 250px;
+    margin-top: 20px;
+  }
+  
+  /* Efeitos para alertas */
+  .temperatura-alerta {
+    position: relative;
+  }
+  
+  .temperatura-alerta::after {
+    content: "⚠️";
+    position: absolute;
+    right: -25px;
+    top: 50%;
+    transform: translateY(-50%);
+    animation: shake 0.5s infinite;
+  }
+  
+  @keyframes shake {
+    0%, 100% { transform: translateY(-50%) rotate(0deg); }
+    25% { transform: translateY(-50%) rotate(5deg); }
+    75% { transform: translateY(-50%) rotate(-5deg); }
+  }
