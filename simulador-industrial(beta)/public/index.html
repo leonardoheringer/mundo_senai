@@ -1,0 +1,1502 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Industrial Avançado - Produção de Aço</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.0.2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="style.css">
+   
+</head>
+<body>
+    <div class="notificacoes-container" id="notificacoes-container"></div>
+    
+    <div class="modal" id="modal-tela-cheia">
+        <div class="modal-conteudo">
+            <div class="modal-cabecalho">
+                <div class="modal-titulo">Visualização em Tela Cheia</div>
+                <button class="modal-fechar" onclick="fecharModal('modal-tela-cheia')">&times;</button>
+            </div>
+            <div class="modal-corpo">
+                <div class="tela-cheia-container">
+                    <canvas class="tela-cheia-grafico" id="grafico-tela-cheia"></canvas>
+                    <div class="tela-cheia-controles">
+                        <button class="botao-controle" onclick="exportarGrafico()">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                        <button class="botao-controle" onclick="fecharModal('modal-tela-cheia')">
+                            <i class="fas fa-times"></i> Fechar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="modal-mapa-termico">
+        <div class="modal-conteudo">
+            <div class="modal-cabecalho">
+                <div class="modal-titulo">Mapa Térmico da Fábrica</div>
+                <button class="modal-fechar" onclick="fecharModal('modal-mapa-termico')">&times;</button>
+            </div>
+            <div class="modal-corpo">
+                <div class="mapa-termico" id="mapa-termico"></div>
+                <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="display: inline-block; width: 15px; height: 15px; background: #00ff00; margin-right: 5px;"></span>
+                        <span>Normal (20-100°C)</span>
+                        <span style="display: inline-block; width: 15px; height: 15px; background: #ffff00; margin: 0 5px 0 15px;"></span>
+                        <span>Alerta (100-200°C)</span>
+                        <span style="display: inline-block; width: 15px; height: 15px; background: #ff0000; margin: 0 5px 0 15px;"></span>
+                        <span>Crítico (>200°C)</span>
+                    </div>
+                    <button class="botao-controle" onclick="atualizarMapaTermico()">
+                        <i class="fas fa-sync-alt"></i> Atualizar
+                    </button>
+                </div>
+            </div>
+            <div class="modal-rodape">
+                <button class="botao-modal botao-modal-secundario" onclick="fecharModal('modal-mapa-termico')">Fechar</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="modal-exportar">
+        <div class="modal-conteudo">
+            <div class="modal-cabecalho">
+                <div class="modal-titulo">Exportar Dados</div>
+                <button class="modal-fechar" onclick="fecharModal('modal-exportar')">&times;</button>
+            </div>
+            <div class="modal-corpo">
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Selecione as Máquinas:</label>
+                    <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="checkbox" checked class="maquina-exportar" value="Todas"> Todas
+                        </label>
+                        <!-- Máquinas serão adicionadas dinamicamente -->
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Selecione o Período:</label>
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <div>
+                            <label style="display: block; margin-bottom: 5px;">Data Inicial:</label>
+                            <input type="datetime-local" id="data-inicial" class="input-data" style="padding: 8px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); color: white;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px;">Data Final:</label>
+                            <input type="datetime-local" id="data-final" class="input-data" style="padding: 8px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); color: white;">
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Formato de Exportação:</label>
+                    <div style="display: flex; gap: 15px;">
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="radio" name="formato-exportacao" value="csv" checked> CSV
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="radio" name="formato-exportacao" value="json"> JSON
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="radio" name="formato-exportacao" value="excel"> Excel
+                        </label>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
+                    <button class="botao-controle" onclick="previewExportacao()" style="margin-right: 10px;">
+                        <i class="fas fa-eye"></i> Visualizar
+                    </button>
+                    <button class="botao-controle" onclick="exportarDados()">
+                        <i class="fas fa-download"></i> Exportar
+                    </button>
+                </div>
+                
+                <div id="preview-exportacao" style="margin-top: 20px; display: none;">
+                    <h4 style="margin-bottom: 10px;">Pré-visualização:</h4>
+                    <div style="max-height: 300px; overflow: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 5px; padding: 10px; background: rgba(0,0,0,0.1);">
+                        <pre id="conteudo-preview" style="margin: 0; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.85rem;"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="modal-3d">
+        <div class="modal-conteudo">
+            <div class="modal-cabecalho">
+                <div class="modal-titulo">Visualização 3D da Fábrica</div>
+                <button class="modal-fechar" onclick="fecharModal('modal-3d')">&times;</button>
+            </div>
+            <div class="modal-corpo">
+                <div class="container-3d" id="container-3d"></div>
+                <div class="controles-3d">
+                    <button class="botao-controle" onclick="resetarCamera3D()">
+                        <i class="fas fa-crosshairs"></i> Centralizar
+                    </button>
+                    <button class="botao-controle" onclick="alternarWireframe()">
+                        <i class="fas fa-border-style"></i> Wireframe
+                    </button>
+                </div>
+            </div>
+            <div class="modal-rodape">
+                <button class="botao-modal botao-modal-secundario" onclick="fecharModal('modal-3d')">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <header>
+        <h1>
+            <i class="fas fa-industry"></i>
+            Monitoramento Siderúrgico Avançado
+        </h1>
+        <div class="header-controls">
+            <div class="control-group">
+                <button class="botao-controle" onclick="alternarTema()">
+                    <i class="fas fa-moon"></i> Tema Escuro
+                </button>
+                <button class="botao-controle" onclick="abrirModal('modal-3d')">
+                    <i class="fas fa-cube"></i> Visualização 3D
+                </button>
+                <button class="botao-controle" onclick="abrirModal('modal-mapa-termico')">
+                    <i class="fas fa-fire"></i> Mapa Térmico
+                </button>
+                <button class="botao-controle" onclick="abrirModal('modal-exportar')">
+                    <i class="fas fa-file-export"></i> Exportar Dados
+                </button>
+            </div>
+            <button id="botao-emergencia" class="botao-emergencia">
+                <i class="fas fa-power-off"></i> PARADA DE EMERGÊNCIA
+            </button>
+        </div>
+    </header>
+    
+    <div class="painel-controle">
+        <div class="etapa-producao">
+            <h3><i class="fas fa-project-diagram"></i> Etapa Atual: <span id="etapa-atual">Carregando...</span></h3>
+            <div class="progresso">
+                <div class="barra-progresso" id="barra-progresso"></div>
+            </div>
+        </div>
+        <div class="estatisticas">
+            <div class="estatistica">
+                <i class="fas fa-bolt"></i>
+                Consumo: <span id="consumo-energia">0</span> kWh
+            </div>
+            <div class="estatistica">
+                <i class="fas fa-clock"></i>
+                Ciclo: <span id="tempo-ciclo">0</span> min
+            </div>
+            <div class="estatistica">
+                <i class="fas fa-boxes"></i>
+                Produção: <span id="total-produtos">0</span> ton
+            </div>
+            <div class="estatistica">
+                <i class="fas fa-exclamation-triangle"></i>
+                Alertas: <span id="total-alertas">0</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="dashboard" id="dashboard">
+        <!-- Máquinas serão inseridas aqui via JavaScript -->
+    </div>
+
+    <script>
+        const socket = io();
+        const historico = {};
+        const graficos = {};
+        const graficosTelaCheia = {};
+        const notificacoes = [];
+        let temaEscuroAtivo = false;
+        let scene3D, camera3D, renderer3D, controls3D, wireframeAtivo = false;
+        let maquinas3D = [];
+        
+        // Configuração de limites
+        const limites = {
+            temperatura: { 
+                'Forno de Arco Elétrico': { min: 1400, max: 1600, critico: 1700 },
+                'Lingoteira Contínua': { min: 1100, max: 1250, critico: 1300 },
+                'Laminação a Quente': { min: 750, max: 850, critico: 900 },
+                'Resfriamento Rápido': { min: 150, max: 250, critico: 300 },
+                default: { min: 0, max: 100, critico: 120 }
+            },
+            pressao: { 
+                min: 1.0, max: 2.5, critico: 3.0 
+            },
+            vibracao: { 
+                max: 7, critico: 9 
+            }
+        };
+        
+        // Tags disponíveis para máquinas
+        const tagsDisponiveis = {
+            'Forno de Arco Elétrico': ['Fusão', 'Alta Temperatura', 'Crítico'],
+            'Lingoteira Contínua': ['Vazamento', 'Contínuo', 'Médio Risco'],
+            'Laminação a Quente': ['Laminação', 'Alta Pressão', 'Manutenção'],
+            'Resfriamento Rápido': ['Resfriamento', 'Baixo Risco', 'Estágio Final']
+        };
+        
+        // Configura o botão de emergência
+        document.getElementById('botao-emergencia').addEventListener('click', () => {
+            if(confirm('ATENÇÃO: Isso parará toda a produção. Confirmar parada de emergência?')) {
+                socket.emit('ativar-emergencia');
+                // Feedback visual imediato
+                document.body.classList.add('emergencia');
+                document.querySelectorAll('.maquina-card').forEach(card => {
+                    card.style.opacity = '0.7';
+                });
+                
+                // Notificação de emergência
+                adicionarNotificacao({
+                    titulo: 'PARADA DE EMERGÊNCIA ATIVADA',
+                    mensagem: 'Todas as máquinas estão sendo paradas por segurança.',
+                    critica: true,
+                    icone: 'fa-exclamation-triangle'
+                });
+            }
+        });
+        
+        // Alternar tema escuro/claro
+        function alternarTema() {
+            temaEscuroAtivo = !temaEscuroAtivo;
+            if (temaEscuroAtivo) {
+                document.body.classList.add('dark-mode');
+                localStorage.setItem('temaEscuro', 'true');
+                document.querySelector('[onclick="alternarTema()"] i').className = 'fas fa-sun';
+                document.querySelector('[onclick="alternarTema()"]').innerHTML = '<i class="fas fa-sun"></i> Tema Claro';
+            } else {
+                document.body.classList.remove('dark-mode');
+                localStorage.setItem('temaEscuro', 'false');
+                document.querySelector('[onclick="alternarTema()"] i').className = 'fas fa-moon';
+                document.querySelector('[onclick="alternarTema()"]').innerHTML = '<i class="fas fa-moon"></i> Tema Escuro';
+            }
+            
+            // Atualizar gráficos
+            for (const maquina in graficos) {
+                if (graficos[maquina]) {
+                    graficos[maquina].update();
+                }
+            }
+        }
+        
+        // Verificar tema salvo
+        if (localStorage.getItem('temaEscuro') === 'true') {
+            alternarTema();
+        }
+        
+        // Abrir modal
+        function abrirModal(id) {
+            document.getElementById(id).style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            
+            if (id === 'modal-3d') {
+                iniciarVisualizacao3D();
+            } else if (id === 'modal-mapa-termico') {
+                atualizarMapaTermico();
+            } else if (id === 'modal-exportar') {
+                carregarOpcoesExportacao();
+            }
+        }
+        
+        // Fechar modal
+        function fecharModal(id) {
+            document.getElementById(id).style.display = 'none';
+            document.body.style.overflow = 'auto';
+            
+            if (id === 'modal-3d') {
+                // Limpar recursos 3D se necessário
+            }
+        }
+        
+        // Adicionar notificação
+        function adicionarNotificacao({ titulo, mensagem, critica = false, alerta = false, icone = 'fa-info-circle' }) {
+            const notificacao = document.createElement('div');
+            notificacao.className = `notificacao ${critica ? 'notificacao-critica' : alerta ? 'notificacao-alerta' : ''}`;
+            
+            const horaAtual = new Date();
+            const horaFormatada = horaAtual.toLocaleTimeString();
+            
+            notificacao.innerHTML = `
+                <i class="fas ${icone}" style="margin-top: 3px;"></i>
+                <div class="notificacao-conteudo">
+                    <div class="notificacao-titulo">${titulo}</div>
+                    <div class="notificacao-mensagem">${mensagem}</div>
+                    <div class="notificacao-hora">
+                        <i class="far fa-clock"></i> ${horaFormatada}
+                    </div>
+                </div>
+                <button class="notificacao-fechar" onclick="this.parentElement.remove()">&times;</button>
+            `;
+            
+            document.getElementById('notificacoes-container').prepend(notificacao);
+            
+            // Remover automaticamente após 10 segundos
+            setTimeout(() => {
+                if (notificacao.parentNode) {
+                    notificacao.style.opacity = '0';
+                    setTimeout(() => notificacao.remove(), 300);
+                }
+            }, 10000);
+            
+            // Adicionar ao histórico de notificações
+            notificacoes.unshift({
+                titulo,
+                mensagem,
+                critica,
+                alerta,
+                hora: horaAtual
+            });
+            
+            // Atualizar contador de alertas
+            if (critica || alerta) {
+                const totalAlertas = document.getElementById('total-alertas');
+                totalAlertas.textContent = parseInt(totalAlertas.textContent) + 1;
+                totalAlertas.parentElement.style.animation = 'pulse 0.5s 3';
+            }
+        }
+        
+        // Handler para eventos de emergência
+        socket.on('sistema-parado', (data) => {
+            console.log('Sistema parado:', data);
+            document.querySelectorAll('.maquina-card').forEach(card => {
+                card.style.opacity = '0.7';
+                const statusElement = card.querySelector('.maquina-status');
+                if (statusElement) {
+                    statusElement.textContent = 'EMERGÊNCIA';
+                    statusElement.className = 'maquina-status status-falha';
+                }
+            });
+        });
+        
+        socket.on('sistema-reiniciando', () => {
+            console.log('Sistema reiniciando...');
+            document.body.classList.remove('emergencia');
+            document.querySelectorAll('.maquina-card').forEach(card => {
+                card.style.opacity = '1';
+            });
+            
+            adicionarNotificacao({
+                titulo: 'Sistema Reiniciando',
+                mensagem: 'As máquinas estão sendo religadas após a parada de emergência.',
+                icone: 'fa-sync-alt'
+            });
+        });
+        
+        // Atualiza etapa de produção
+        socket.on('etapa-producao', (data) => {
+            console.log('Nova etapa:', data.etapa);
+            document.getElementById('etapa-atual').textContent = data.etapa;
+            document.getElementById('consumo-energia').textContent = data.consumoEnergia;
+            document.getElementById('tempo-ciclo').textContent = data.tempoCiclo;
+            document.getElementById('total-produtos').textContent = data.totalProdutos;
+            
+            // Anima a barra de progresso
+            const barra = document.getElementById('barra-progresso');
+            barra.style.width = '0%';
+            setTimeout(() => {
+                barra.style.width = '100%';
+            }, 50);
+            
+            // Notificação de mudança de etapa
+            if (data.etapaAnterior && data.etapaAnterior !== data.etapa) {
+                adicionarNotificacao({
+                    titulo: 'Etapa de Produção Alterada',
+                    mensagem: `Mudança de ${data.etapaAnterior} para ${data.etapa}`,
+                    icone: 'fa-project-diagram'
+                });
+            }
+        });
+        
+        // Handler para dados dos sensores
+        socket.on('dados-sensores', (dados) => {
+            let totalProdutos = 0;
+            let alertas = 0;
+            
+            for (const maquina in dados) {
+                const info = dados[maquina];
+                const limitesTemp = limites.temperatura[maquina] || limites.temperatura.default;
+                
+                const statusTemp = getStatus(info.temperatura, limitesTemp);
+                const statusPressao = getStatus(info.pressao, limites.pressao);
+                const statusVibracao = getStatus(info.vibracao, limites.vibracao);
+                
+                // Verificar se houve mudança crítica para notificação
+                if (historico[maquina]) {
+                    const statusAnteriorTemp = getStatus(historico[maquina].ultimaTemperatura, limitesTemp);
+                    
+                    if (!statusAnteriorTemp.critico && statusTemp.critico) {
+                        adicionarNotificacao({
+                            titulo: `Temperatura Crítica - ${maquina}`,
+                            mensagem: `Temperatura atingiu ${info.temperatura.toFixed(1)}°C (Limite: ${limitesTemp.critico}°C)`,
+                            critica: true,
+                            icone: 'fa-fire'
+                        });
+                    } else if (!statusAnteriorTemp.alerta && statusTemp.alerta) {
+                        adicionarNotificacao({
+                            titulo: `Alerta de Temperatura - ${maquina}`,
+                            mensagem: `Temperatura elevada: ${info.temperatura.toFixed(1)}°C (Limite: ${limitesTemp.max}°C)`,
+                            alerta: true,
+                            icone: 'fa-thermometer-half'
+                        });
+                    }
+                }
+                
+                let statusGeral;
+                if (info.status === 'FALHA') {
+                    statusGeral = 'status-falha';
+                    alertas++;
+                } else if (info.status === 'ALERTA' || statusTemp.alerta || statusPressao.alerta || statusVibracao.alerta) {
+                    statusGeral = 'status-alerta';
+                    alertas++;
+                } else {
+                    statusGeral = 'status-normal';
+                }
+                
+                totalProdutos += info.produtos_processados;
+                
+                let card = document.getElementById(`maquina-${maquina}`);
+                if (!card) {
+                    // Cria novo card se não existir
+                    card = document.createElement('div');
+                    card.className = 'maquina-card';
+                    card.id = `maquina-${maquina}`;
+                    
+                    const tagsHTML = tagsDisponiveis[maquina] ? 
+                        tagsDisponiveis[maquina].map(tag => `
+                            <span class="tag">
+                                <i class="fas fa-tag"></i> ${tag}
+                            </span>
+                        `).join('') : '';
+                    
+                    card.innerHTML = `
+                        <div class="maquina-header">
+                            <div class="maquina-titulo">
+                                <i class="fas fa-cog"></i> ${maquina}
+                            </div>
+                            <div class="maquina-status ${statusGeral}">
+                                ${info.status === 'FALHA' ? 'FALHA' : info.status === 'ALERTA' ? 'ALERTA' : 'NORMAL'}
+                            </div>
+                        </div>
+                        
+                        <div class="tags-container">
+                            ${tagsHTML}
+                        </div>
+                        
+                        <div class="indicadores">
+                            <div class="indicador ${statusTemp.classe}" id="indicador-temp-${maquina}">
+                                <span class="indicador-titulo"><i class="fas fa-thermometer-half"></i> Temperatura</span>
+                                <div>
+                                    <span class="indicador-valor">${info.temperatura.toFixed(1)}</span>
+                                    <span class="indicador-unidade">°C</span>
+                                </div>
+                            </div>
+                            
+                            <div class="indicador ${statusPressao.classe}" id="indicador-pressao-${maquina}">
+                                <span class="indicador-titulo"><i class="fas fa-tachometer-alt"></i> Pressão</span>
+                                <div>
+                                    <span class="indicador-valor">${info.pressao.toFixed(2)}</span>
+                                    <span class="indicador-unidade">bar</span>
+                                </div>
+                            </div>
+                            
+                            <div class="indicador ${statusVibracao.classe}" id="indicador-vibracao-${maquina}">
+                                <span class="indicador-titulo"><i class="fas fa-vibration"></i> Vibração</span>
+                                <div>
+                                    <span class="indicador-valor">${info.vibracao}</span>
+                                    <span class="indicador-unidade">/10</span>
+                                </div>
+                            </div>
+                            
+                            <div class="indicador" id="indicador-produtos-${maquina}">
+                                <span class="indicador-titulo"><i class="fas fa-boxes"></i> Produtos</span>
+                                <div>
+                                    <span class="indicador-valor">${info.produtos_processados}</span>
+                                    <span class="indicador-unidade">unid.</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="controles" id="controles-${maquina}">
+                            ${gerarControles(maquina, statusTemp, statusPressao, info.status)}
+                        </div>
+                        
+                        <div class="chart-container">
+                            <canvas id="chart-${maquina}"></canvas>
+                            <button class="botao-controle" style="position: absolute; top: 5px; right: 5px; padding: 3px 8px; font-size: 0.8rem;" onclick="abrirGraficoTelaCheia('${maquina}')">
+                                <i class="fas fa-expand"></i>
+                            </button>
+                        </div>`;
+                    
+                    document.getElementById('dashboard').appendChild(card);
+                } else {
+                    // Atualiza card existente
+                    const statusElement = card.querySelector('.maquina-status');
+                    if (statusElement) {
+                        statusElement.className = `maquina-status ${statusGeral}`;
+                        statusElement.textContent = info.status === 'FALHA' ? 'FALHA' : 
+                                                 info.status === 'ALERTA' ? 'ALERTA' : 'NORMAL';
+                    }
+                    
+                    updateIndicator(`indicador-temp-${maquina}`, 
+                                  'Temperatura', 'fa-thermometer-half', 
+                                  info.temperatura.toFixed(1), '°C', 
+                                  statusTemp.classe);
+                    
+                    updateIndicator(`indicador-pressao-${maquina}`, 
+                                  'Pressão', 'fa-tachometer-alt', 
+                                  info.pressao.toFixed(2), 'bar', 
+                                  statusPressao.classe);
+                    
+                    updateIndicator(`indicador-vibracao-${maquina}`, 
+                                  'Vibração', 'fa-vibration', 
+                                  info.vibracao, '/10', 
+                                  statusVibracao.classe);
+                    
+                    updateIndicator(`indicador-produtos-${maquina}`, 
+                                  'Produtos', 'fa-boxes', 
+                                  info.produtos_processados, 'unid.', 
+                                  '');
+                    
+                    document.getElementById(`controles-${maquina}`).innerHTML = 
+                        gerarControles(maquina, statusTemp, statusPressao, info.status);
+                }
+                
+                atualizarGrafico(maquina, info);
+                
+                // Atualizar histórico
+                if (!historico[maquina]) {
+                    historico[maquina] = {
+                        temperatura: [],
+                        pressao: [],
+                        vibracao: [],
+                        produtos: [],
+                        labels: [],
+                        maxPontos: 20,
+                        ultimaTemperatura: info.temperatura
+                    };
+                } else {
+                    historico[maquina].ultimaTemperatura = info.temperatura;
+                }
+            }
+            
+            // Atualizar contador de produtos
+            document.getElementById('total-produtos').textContent = totalProdutos;
+        });
+        
+        function updateIndicator(id, title, icon, value, unit, classe) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.innerHTML = `
+                    <span class="indicador-titulo"><i class="fas ${icon}"></i> ${title}</span>
+                    <div>
+                        <span class="indicador-valor">${value}</span>
+                        <span class="indicador-unidade">${unit}</span>
+                    </div>`;
+                element.className = `indicador ${classe}`;
+            }
+        }
+        
+        function getStatus(valor, limite) {
+            const critico = valor > (limite.critico || limite.max * 1.2);
+            const alerta = valor > limite.max && !critico;
+            return {
+                critico,
+                alerta,
+                classe: critico ? 'indicador-critico' : alerta ? 'indicador-alerta' : '',
+                texto: critico ? 'CRÍTICO' : alerta ? 'ALERTA' : 'NORMAL'
+            };
+        }
+        
+        function gerarControles(maquina, statusTemp, statusPressao, statusGeral) {
+            let html = '';
+            
+            // Controle de temperatura
+            html += `
+            <div class="controle-item">
+                <div class="controle-info">
+                    <div class="controle-icone ${statusTemp.critico ? 'fa-fire' : 
+                                              statusGeral === 'FALHA' ? 'fa-exclamation-triangle' : 
+                                              'fa-temperature-low'}"></div>
+                    <div class="controle-detalhes">
+                        <strong>Sistema de Resfriamento</strong>
+                        <div>Status: ${statusGeral === 'FALHA' ? 'FALHA' : statusTemp.texto}</div>
+                    </div>
+                </div>
+                <div class="controle-acoes">
+                    ${statusTemp.alerta || statusTemp.critico || statusGeral === 'FALHA'
+                        ? '<span class="status-badge ativo"><i class="fas fa-power-off"></i> LIGADO</span>' 
+                        : '<span class="status-badge"><i class="fas fa-power-off"></i> DESLIGADO</span>'}
+                    <button class="botao-controle" onclick="controleManual('${maquina}', 'resfriamento')" style="padding: 5px 8px;">
+                        <i class="fas fa-hand-pointer"></i>
+                    </button>
+                </div>
+            </div>`;
+            
+            // Controle de pressão
+            html += `
+            <div class="controle-item">
+                <div class="controle-info">
+                    <div class="controle-icone ${statusPressao.critico ? 'fa-exclamation-triangle' : 
+                                                statusGeral === 'FALHA' ? 'fa-exclamation-circle' : 
+                                                'fa-tachometer-alt'}"></div>
+                    <div class="controle-detalhes">
+                        <strong>Válvula de Alívio</strong>
+                        <div>Status: ${statusGeral === 'FALHA' ? 'FALHA' : statusPressao.texto}</div>
+                    </div>
+                </div>
+                <div class="controle-acoes">
+                    ${statusPressao.alerta || statusPressao.critico || statusGeral === 'FALHA'
+                        ? '<span class="status-badge ativo"><i class="fas fa-power-off"></i> ABERTA</span>' 
+                        : '<span class="status-badge"><i class="fas fa-power-off"></i> FECHADA</span>'}
+                    <button class="botao-controle" onclick="controleManual('${maquina}', 'valvula')" style="padding: 5px 8px;">
+                        <i class="fas fa-hand-pointer"></i>
+                    </button>
+                </div>
+            </div>`;
+            
+            // Botão para detalhes da máquina
+            html += `
+            <div class="controle-item">
+                <div class="controle-info">
+                    <div class="controle-icone fa-info-circle"></div>
+                    <div class="controle-detalhes">
+                        <strong>Informações Adicionais</strong>
+                    </div>
+                </div>
+                <div class="controle-acoes">
+                    <button class="botao-controle" onclick="mostrarDetalhesMaquina('${maquina}')" style="padding: 5px 8px;">
+                        <i class="fas fa-ellipsis-h"></i>
+                    </button>
+                </div>
+            </div>`;
+            
+            return html;
+        }
+        
+        function controleManual(maquina, tipo) {
+            const acao = prompt(`Qual ação deseja realizar na ${maquina}? (${tipo === 'resfriamento' ? 'Ligar/Desligar resfriamento' : 'Abrir/Fechar válvula'})`);
+            if (acao) {
+                socket.emit('acao-controle', {
+                    maquina,
+                    tipo,
+                    acao
+                });
+                
+                adicionarNotificacao({
+                    titulo: `Controle Manual - ${maquina}`,
+                    mensagem: `${tipo === 'resfriamento' ? 'Resfriamento' : 'Válvula'}: ${acao}`,
+                    icone: 'fa-hand-paper'
+                });
+            }
+        }
+        
+        function mostrarDetalhesMaquina(maquina) {
+            alert(`Detalhes da máquina ${maquina}\n\nEsta funcionalidade pode ser expandida para mostrar um relatório completo da máquina.`);
+        }
+        
+        function atualizarGrafico(maquina, info) {
+            if (!historico[maquina]) {
+                historico[maquina] = {
+                    temperatura: [],
+                    pressao: [],
+                    vibracao: [],
+                    produtos: [],
+                    labels: [],
+                    maxPontos: 20
+                };
+            }
+            
+            const historicoMaquina = historico[maquina];
+            
+            // Adiciona novos dados
+            historicoMaquina.temperatura.push(info.temperatura);
+            historicoMaquina.pressao.push(info.pressao);
+            historicoMaquina.vibracao.push(info.vibracao);
+            historicoMaquina.produtos.push(info.produtos_processados);
+            historicoMaquina.labels.push(new Date().toLocaleTimeString());
+            
+            // Remove dados antigos se exceder o máximo
+            if (historicoMaquina.temperatura.length > historicoMaquina.maxPontos) {
+                historicoMaquina.temperatura.shift();
+                historicoMaquina.pressao.shift();
+                historicoMaquina.vibracao.shift();
+                historicoMaquina.produtos.shift();
+                historicoMaquina.labels.shift();
+            }
+            
+            const ctx = document.getElementById(`chart-${maquina}`)?.getContext('2d');
+            if (!ctx) return;
+            
+            const limitesTemp = limites.temperatura[maquina] || limites.temperatura.default;
+            
+            if (!graficos[maquina]) {
+                // Configuração inicial do gráfico
+                graficos[maquina] = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: historicoMaquina.labels,
+                        datasets: [
+                            {
+                                label: 'Temperatura °C',
+                                data: historicoMaquina.temperatura,
+                                borderColor: 'rgb(255, 99, 132)',
+                                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                                tension: 0.3,
+                                fill: true,
+                                yAxisID: 'y'
+                            },
+                            {
+                                label: 'Pressão bar',
+                                data: historicoMaquina.pressao,
+                                borderColor: 'rgb(54, 162, 235)',
+                                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                                tension: 0.3,
+                                fill: true,
+                                yAxisID: 'y1'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: {
+                            duration: 0
+                        },
+                        plugins: {
+                            annotation: {
+                                annotations: {
+                                    linhaTempMax: {
+                                        type: 'line',
+                                        yMin: limitesTemp.max,
+                                        yMax: limitesTemp.max,
+                                        borderColor: 'orange',
+                                        borderWidth: 1,
+                                        borderDash: [6, 6],
+                                        label: {
+                                            content: 'Limite',
+                                            enabled: true,
+                                            position: 'right'
+                                        }
+                                    },
+                                    linhaTempCritico: {
+                                        type: 'line',
+                                        yMin: limitesTemp.critico,
+                                        yMax: limitesTemp.critico,
+                                        borderColor: 'red',
+                                        borderWidth: 1,
+                                        borderDash: [6, 6],
+                                        label: {
+                                            content: 'Crítico',
+                                            enabled: true,
+                                            position: 'right'
+                                        }
+                                    },
+                                    linhaPressaoMax: {
+                                        type: 'line',
+                                        yMin: limites.pressao.max,
+                                        yMax: limites.pressao.max,
+                                        borderColor: 'orange',
+                                        borderWidth: 1,
+                                        borderDash: [6, 6],
+                                        yAxisID: 'y1',
+                                        label: {
+                                            content: 'Limite',
+                                            enabled: true,
+                                            position: 'right'
+                                        }
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) label += ': ';
+                                        label += context.parsed.y.toFixed(2);
+                                        return label;
+                                    }
+                                }
+                            },
+                            zoom: {
+                                zoom: {
+                                    wheel: {
+                                        enabled: true,
+                                    },
+                                    pinch: {
+                                        enabled: true
+                                    },
+                                    mode: 'xy',
+                                },
+                                pan: {
+                                    enabled: true,
+                                    mode: 'xy',
+                                },
+                                limits: {
+                                    y: {min: 0, max: limitesTemp.critico + 100},
+                                    y1: {min: 0, max: limites.pressao.critico + 0.5}
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Temperatura (°C)'
+                                },
+                                min: Math.max(0, limitesTemp.min - 100),
+                                max: limitesTemp.critico + 100
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Pressão (bar)'
+                                },
+                                min: 0.5,
+                                max: limites.pressao.critico + 0.5,
+                                grid: {
+                                    drawOnChartArea: false
+                                }
+                            }
+                        }
+                    }
+                });
+            } else {
+                // Atualiza apenas os dados do gráfico existente
+                graficos[maquina].data.labels = historicoMaquina.labels;
+                graficos[maquina].data.datasets[0].data = historicoMaquina.temperatura;
+                graficos[maquina].data.datasets[1].data = historicoMaquina.pressao;
+                graficos[maquina].update();
+            }
+        }
+        
+        function abrirGraficoTelaCheia(maquina) {
+            abrirModal('modal-tela-cheia');
+            
+            // Criar ou atualizar gráfico em tela cheia
+            const ctx = document.getElementById('grafico-tela-cheia').getContext('2d');
+            const limitesTemp = limites.temperatura[maquina] || limites.temperatura.default;
+            
+            if (graficosTelaCheia[maquina]) {
+                graficosTelaCheia[maquina].destroy();
+            }
+            
+            const historicoMaquina = historico[maquina];
+            
+            graficosTelaCheia[maquina] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: historicoMaquina.labels,
+                    datasets: [
+                        {
+                            label: 'Temperatura °C',
+                            data: historicoMaquina.temperatura,
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            tension: 0.3,
+                            fill: true,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Pressão bar',
+                            data: historicoMaquina.pressao,
+                            borderColor: 'rgb(54, 162, 235)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            tension: 0.3,
+                            fill: true,
+                            yAxisID: 'y1'
+                        },
+                        {
+                            label: 'Vibração /10',
+                            data: historicoMaquina.vibracao,
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                            tension: 0.3,
+                            fill: true,
+                            yAxisID: 'y2'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 0
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `Dados da Máquina: ${maquina}`,
+                            font: {
+                                size: 16
+                            }
+                        },
+                        annotation: {
+                            annotations: {
+                                linhaTempMax: {
+                                    type: 'line',
+                                    yMin: limitesTemp.max,
+                                    yMax: limitesTemp.max,
+                                    borderColor: 'orange',
+                                    borderWidth: 1,
+                                    borderDash: [6, 6],
+                                    label: {
+                                        content: 'Limite',
+                                        enabled: true,
+                                        position: 'right'
+                                    }
+                                },
+                                linhaTempCritico: {
+                                    type: 'line',
+                                    yMin: limitesTemp.critico,
+                                    yMax: limitesTemp.critico,
+                                    borderColor: 'red',
+                                    borderWidth: 1,
+                                    borderDash: [6, 6],
+                                    label: {
+                                        content: 'Crítico',
+                                        enabled: true,
+                                        position: 'right'
+                                    }
+                                },
+                                linhaPressaoMax: {
+                                    type: 'line',
+                                    yMin: limites.pressao.max,
+                                    yMax: limites.pressao.max,
+                                    borderColor: 'orange',
+                                    borderWidth: 1,
+                                    borderDash: [6, 6],
+                                    yAxisID: 'y1',
+                                    label: {
+                                        content: 'Limite',
+                                        enabled: true,
+                                        position: 'right'
+                                    }
+                                },
+                                linhaVibracaoMax: {
+                                    type: 'line',
+                                    yMin: limites.vibracao.max,
+                                    yMax: limites.vibracao.max,
+                                    borderColor: 'orange',
+                                    borderWidth: 1,
+                                    borderDash: [6, 6],
+                                    yAxisID: 'y2',
+                                    label: {
+                                        content: 'Limite',
+                                        enabled: true,
+                                        position: 'right'
+                                    }
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) label += ': ';
+                                    label += context.parsed.y.toFixed(2);
+                                    return label;
+                                }
+                            }
+                        },
+                        zoom: {
+                            zoom: {
+                                wheel: {
+                                    enabled: true,
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'xy',
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'xy',
+                            },
+                            limits: {
+                                y: {min: 0, max: limitesTemp.critico + 100},
+                                y1: {min: 0, max: limites.pressao.critico + 0.5},
+                                y2: {min: 0, max: 12}
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Temperatura (°C)'
+                            },
+                            min: Math.max(0, limitesTemp.min - 100),
+                            max: limitesTemp.critico + 100
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Pressão (bar)'
+                            },
+                            min: 0.5,
+                            max: limites.pressao.critico + 0.5,
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        },
+                        y2: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Vibração (/10)'
+                            },
+                            min: 0,
+                            max: 12,
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function exportarGrafico() {
+            const maquina = Object.keys(graficosTelaCheia)[0];
+            if (!maquina) return;
+            
+            const canvas = document.getElementById('grafico-tela-cheia');
+            const dataURL = canvas.toDataURL('image/png');
+            
+            const link = document.createElement('a');
+            link.download = `grafico-${maquina}-${new Date().toISOString().slice(0,10)}.png`;
+            link.href = dataURL;
+            link.click();
+            
+            adicionarNotificacao({
+                titulo: 'Gráfico Exportado',
+                mensagem: `O gráfico da máquina ${maquina} foi baixado com sucesso.`,
+                icone: 'fa-check-circle'
+            });
+        }
+        
+        function atualizarMapaTermico() {
+            const mapa = document.getElementById('mapa-termico');
+            mapa.innerHTML = '';
+            
+            // Posições relativas das máquinas no mapa
+            const posicoes = {
+                'Forno de Arco Elétrico': { x: 20, y: 20 },
+                'Lingoteira Contínua': { x: 70, y: 30 },
+                'Laminação a Quente': { x: 40, y: 70 },
+                'Resfriamento Rápido': { x: 80, y: 80 }
+            };
+            
+            for (const maquina in historico) {
+                if (historico[maquina].temperatura.length > 0) {
+                    const tempAtual = historico[maquina].temperatura[historico[maquina].temperatura.length - 1];
+                    const limitesTemp = limites.temperatura[maquina] || limites.temperatura.default;
+                    const percentualTemp = Math.min(1, tempAtual / (limitesTemp.critico * 1.5));
+                    
+                    // Cor baseada na temperatura
+                    let cor;
+                    if (tempAtual > limitesTemp.critico) {
+                        cor = `rgba(255, 0, 0, ${0.5 + percentualTemp * 0.5})`;
+                    } else if (tempAtual > limitesTemp.max) {
+                        cor = `rgba(255, 165, 0, ${0.3 + percentualTemp * 0.7})`;
+                    } else {
+                        cor = `rgba(0, 255, 0, ${0.3 + percentualTemp * 0.7})`;
+                    }
+                    
+                    // Tamanho baseado na temperatura
+                    const tamanho = 20 + percentualTemp * 50;
+                    
+                    const ponto = document.createElement('div');
+                    ponto.className = 'ponto-calor';
+                    ponto.style.width = `${tamanho}px`;
+                    ponto.style.height = `${tamanho}px`;
+                    ponto.style.left = `${posicoes[maquina].x}%`;
+                    ponto.style.top = `${posicoes[maquina].y}%`;
+                    ponto.style.background = `radial-gradient(circle, ${cor} 0%, rgba(255,255,255,0) 70%)`;
+                    ponto.title = `${maquina}\nTemperatura: ${tempAtual.toFixed(1)}°C`;
+                    
+                    // Animação para pontos críticos
+                    if (tempAtual > limitesTemp.critico) {
+                        ponto.style.animation = 'pulse 1s infinite';
+                    }
+                    
+                    mapa.appendChild(ponto);
+                    
+                    // Adicionar label
+                    const label = document.createElement('div');
+                    label.style.position = 'absolute';
+                    label.style.left = `${posicoes[maquina].x}%`;
+                    label.style.top = `${posicoes[maquina].y + 5}%`;
+                    label.style.transform = 'translate(-50%, 0)';
+                    label.style.color = 'white';
+                    label.style.fontSize = '0.8rem';
+                    label.style.textShadow = '0 0 3px black';
+                    label.textContent = maquina.split(' ')[0];
+                    mapa.appendChild(label);
+                }
+            }
+        }
+        
+        function carregarOpcoesExportacao() {
+            const container = document.querySelector('#modal-exportar .modal-corpo > div:first-child > div');
+            
+            // Limpar opções existentes (exceto "Todas")
+            const todasCheckbox = container.querySelector('input[value="Todas"]').parentNode;
+            container.innerHTML = '';
+            container.appendChild(todasCheckbox);
+            
+            // Adicionar máquinas
+            for (const maquina in historico) {
+                const label = document.createElement('label');
+                label.style.display = 'flex';
+                label.style.alignItems = 'center';
+                label.style.gap = '5px';
+                label.style.cursor = 'pointer';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'maquina-exportar';
+                checkbox.value = maquina;
+                checkbox.checked = true;
+                
+                label.appendChild(checkbox);
+                label.appendChild(document.createTextNode(maquina));
+                
+                container.appendChild(label);
+            }
+            
+            // Configurar datas padrão (últimas 24 horas)
+            const dataFinal = new Date();
+            const dataInicial = new Date(dataFinal);
+            dataInicial.setHours(dataInicial.getHours() - 24);
+            
+            document.getElementById('data-inicial').value = formatarDataParaInput(dataInicial);
+            document.getElementById('data-final').value = formatarDataParaInput(dataFinal);
+        }
+        
+        function formatarDataParaInput(date) {
+            return date.toISOString().slice(0, 16);
+        }
+        
+        function previewExportacao() {
+            const maquinasSelecionadas = Array.from(document.querySelectorAll('.maquina-exportar:checked')).map(el => el.value);
+            const dataInicial = document.getElementById('data-inicial').value;
+            const dataFinal = document.getElementById('data-final').value;
+            const formato = document.querySelector('input[name="formato-exportacao"]:checked').value;
+            
+            // Simular dados para preview (em uma implementação real, isso viria do servidor)
+            let previewData = [];
+            
+            if (maquinasSelecionadas.includes('Todas')) {
+                for (const maquina in historico) {
+                    previewData.push({
+                        maquina,
+                        temperatura: historico[maquina].temperatura[historico[maquina].temperatura.length - 1],
+                        pressao: historico[maquina].pressao[historico[maquina].pressao.length - 1],
+                        vibracao: historico[maquina].vibracao[historico[maquina].vibracao.length - 1],
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            } else {
+                for (const maquina of maquinasSelecionadas) {
+                    if (historico[maquina]) {
+                        previewData.push({
+                            maquina,
+                            temperatura: historico[maquina].temperatura[historico[maquina].temperatura.length - 1],
+                            pressao: historico[maquina].pressao[historico[maquina].pressao.length - 1],
+                            vibracao: historico[maquina].vibracao[historico[maquina].vibracao.length - 1],
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                }
+            }
+            
+            let previewText;
+            
+            switch(formato) {
+                case 'csv':
+                    previewText = 'maquina,temperatura,pressao,vibracao,timestamp\n';
+                    previewText += previewData.map(item => 
+                        `${item.maquina},${item.temperatura},${item.pressao},${item.vibracao},${item.timestamp}`
+                    ).join('\n');
+                    break;
+                    
+                case 'json':
+                    previewText = JSON.stringify(previewData, null, 2);
+                    break;
+                    
+                case 'excel':
+                    previewText = 'Simulação de dados Excel (base64)\n\n';
+                    previewText += 'Em uma implementação real, este seria um arquivo XLSX binário.';
+                    break;
+            }
+            
+            document.getElementById('conteudo-preview').textContent = previewText;
+            document.getElementById('preview-exportacao').style.display = 'block';
+        }
+        
+        function exportarDados() {
+            const maquinasSelecionadas = Array.from(document.querySelectorAll('.maquina-exportar:checked')).map(el => el.value);
+            const dataInicial = document.getElementById('data-inicial').value;
+            const dataFinal = document.getElementById('data-final').value;
+            const formato = document.querySelector('input[name="formato-exportacao"]:checked').value;
+            
+            // Em uma implementação real, isso enviaria uma requisição ao servidor para gerar o arquivo
+            // Aqui estamos apenas simulando o comportamento
+            
+            let nomeArquivo = `dados-producao-${new Date().toISOString().slice(0,10)}`;
+            let conteudo, tipoMime;
+            
+            // Simular geração de conteúdo
+            if (formato === 'csv') {
+                nomeArquivo += '.csv';
+                tipoMime = 'text/csv';
+                conteudo = 'maquina,temperatura,pressao,vibracao,timestamp\n';
+                
+                if (maquinasSelecionadas.includes('Todas')) {
+                    for (const maquina in historico) {
+                        conteudo += `${maquina},${historico[maquina].temperatura.join('|')},${historico[maquina].pressao.join('|')},${historico[maquina].vibracao.join('|')},${new Date().toISOString()}\n`;
+                    }
+                } else {
+                    for (const maquina of maquinasSelecionadas) {
+                        if (historico[maquina]) {
+                            conteudo += `${maquina},${historico[maquina].temperatura.join('|')},${historico[maquina].pressao.join('|')},${historico[maquina].vibracao.join('|')},${new Date().toISOString()}\n`;
+                        }
+                    }
+                }
+            } else if (formato === 'json') {
+                nomeArquivo += '.json';
+                tipoMime = 'application/json';
+                
+                const dadosExportar = {};
+                
+                if (maquinasSelecionadas.includes('Todas')) {
+                    for (const maquina in historico) {
+                        dadosExportar[maquina] = {
+                            temperatura: historico[maquina].temperatura,
+                            pressao: historico[maquina].pressao,
+                            vibracao: historico[maquina].vibracao,
+                            timestamps: historico[maquina].labels.map((_, i) => new Date(Date.now() - (historico[maquina].labels.length - i - 1) * 2000).toISOString())
+                        };
+                    }
+                } else {
+                    for (const maquina of maquinasSelecionadas) {
+                        if (historico[maquina]) {
+                            dadosExportar[maquina] = {
+                                temperatura: historico[maquina].temperatura,
+                                pressao: historico[maquina].pressao,
+                                vibracao: historico[maquina].vibracao,
+                                timestamps: historico[maquina].labels.map((_, i) => new Date(Date.now() - (historico[maquina].labels.length - i - 1) * 2000).toISOString())
+                            };
+                        }
+                    }
+                }
+                
+                conteudo = JSON.stringify(dadosExportar, null, 2);
+            } else { // Excel
+                nomeArquivo += '.xlsx';
+                tipoMime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+                conteudo = 'Simulação de arquivo Excel (em implementação real seria binário)';
+            }
+            
+            // Criar link de download
+            const blob = new Blob([conteudo], { type: tipoMime });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = nomeArquivo;
+            link.click();
+            
+            // Notificação de sucesso
+            adicionarNotificacao({
+                titulo: 'Exportação Concluída',
+                mensagem: `Os dados foram exportados no formato ${formato.toUpperCase()}`,
+                icone: 'fa-check-circle'
+            });
+        }
+        
+        // Visualização 3D
+        function iniciarVisualizacao3D() {
+            const container = document.getElementById('container-3d');
+            
+            // Limpar container
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
+            
+            // Configuração básica da cena
+            scene3D = new THREE.Scene();
+            scene3D.background = new THREE.Color(0x111122);
+            
+            camera3D = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera3D.position.set(10, 15, 20);
+            
+            renderer3D = new THREE.WebGLRenderer({ antialias: true });
+            renderer3D.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer3D.domElement);
+            
+            // Controles de órbita
+            controls3D = new THREE.OrbitControls(camera3D, renderer3D.domElement);
+            controls3D.enableDamping = true;
+            controls3D.dampingFactor = 0.25;
+            
+            // Luzes
+            const ambientLight = new THREE.AmbientLight(0x404040);
+            scene3D.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(1, 1, 1);
+            scene3D.add(directionalLight);
+            
+            // Eixos de referência (opcional)
+            const axesHelper = new THREE.AxesHelper(10);
+            scene3D.add(axesHelper);
+            
+            // Grade de referência
+            const gridHelper = new THREE.GridHelper(30, 30);
+            scene3D.add(gridHelper);
+            
+            // Criar modelos das máquinas
+            criarModelosMaquinas3D();
+            
+            // Animação
+            function animate() {
+                requestAnimationFrame(animate);
+                controls3D.update();
+                renderer3D.render(scene3D, camera3D);
+                
+                // Animar máquinas com base em seus dados
+                for (const maquina of maquinas3D) {
+                    if (historico[maquina.nome]) {
+                        const tempAtual = historico[maquina.nome].temperatura[historico[maquina.nome].temperatura.length - 1];
+                        const limitesTemp = limites.temperatura[maquina.nome] || limites.temperatura.default;
+                        
+                        // Mudar cor baseado na temperatura
+                        const percentualTemp = Math.min(1, tempAtual / (limitesTemp.critico * 1.2));
+                        let cor;
+                        
+                        if (tempAtual > limitesTemp.critico) {
+                            cor = new THREE.Color(1, 0, 0); // Vermelho
+                        } else if (tempAtual > limitesTemp.max) {
+                            cor = new THREE.Color(1, 0.5, 0); // Laranja
+                        } else {
+                            cor = new THREE.Color(0, 1, 0); // Verde
+                        }
+                        
+                        // Adicionar um pouco de amarelo para temperaturas médias
+                        if (tempAtual > limitesTemp.min + (limitesTemp.max - limitesTemp.min) * 0.5) {
+                            cor.lerp(new THREE.Color(1, 1, 0), 0.3);
+                        }
+                        
+                        maquina.mesh.material.color = cor;
+                        
+                        // Pulsar para máquinas em estado crítico
+                        if (tempAtual > limitesTemp.critico) {
+                            const scale = 1 + Math.sin(Date.now() * 0.005) * 0.1;
+                            maquina.mesh.scale.set(scale, scale, scale);
+                        } else {
+                            maquina.mesh.scale.set(1, 1, 1);
+                        }
+                    }
+                }
+            }
+            
+            animate();
+            
+            // Redimensionar
+            window.addEventListener('resize', () => {
+                camera3D.aspect = container.clientWidth / container.clientHeight;
+                camera3D.updateProjectionMatrix();
+                renderer3D.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+        
+        function criarModelosMaquinas3D() {
+            maquinas3D = [];
+            
+            // Posições das máquinas no espaço 3D
+            const posicoes = [
+                { nome: 'Forno de Arco Elétrico', x: -8, z: -8, size: 4 },
+                { nome: 'Lingoteira Contínua', x: 8, z: -8, size: 3 },
+                { nome: 'Laminação a Quente', x: -8, z: 8, size: 3.5 },
+                { nome: 'Resfriamento Rápido', x: 8, z: 8, size: 3 }
+            ];
+            
+            for (const pos of posicoes) {
+                const geometry = new THREE.BoxGeometry(pos.size, pos.size * 0.5, pos.size);
+                const material = new THREE.MeshPhongMaterial({ 
+                    color: 0x4ca1af,
+                    shininess: 30
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(pos.x, pos.size * 0.25, pos.z);
+                mesh.userData.nome = pos.nome;
+                
+                scene3D.add(mesh);
+                
+                // Adicionar label
+                const canvas = document.createElement('canvas');
+                canvas.width = 256;
+                canvas.height = 128;
+                const context = canvas.getContext('2d');
+                context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                context.font = 'Bold 24px Arial';
+                context.fillStyle = 'white';
+                context.textAlign = 'center';
+                context.fillText(pos.nome.split(' ')[0], canvas.width / 2, 40);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+                const sprite = new THREE.Sprite(spriteMaterial);
+                sprite.position.set(pos.x, pos.size * 0.5 + 2, pos.z);
+                sprite.scale.set(5, 2.5, 1);
+                scene3D.add(sprite);
+                
+                maquinas3D.push({ nome: pos.nome, mesh, sprite });
+            }
+        }
+        
+        function resetarCamera3D() {
+            camera3D.position.set(10, 15, 20);
+            camera3D.lookAt(0, 0, 0);
+            controls3D.update();
+        }
+        
+        function alternarWireframe() {
+            wireframeAtivo = !wireframeAtivo;
+            
+            for (const maquina of maquinas3D) {
+                maquina.mesh.material.wireframe = wireframeAtivo;
+            }
+        }
+    </script>
+</body>
+</html>
