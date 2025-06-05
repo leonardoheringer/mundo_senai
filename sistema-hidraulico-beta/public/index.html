@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Hidráulico Residencial</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🏠 Sistema Hidráulico Residencial</h1>
+        
+        <div class="house">
+            <!-- Telhado -->
+            <div class="roof"></div>
+            
+            <!-- Casa -->
+            <div class="house-body">
+                <!-- Reservatório externo -->
+                <div class="external-tank">
+                    <div class="tank-label">Reservatório (2000L)</div>
+                    <div class="water-container">
+                        <div class="water" id="reservoir-water"></div>
+                    </div>
+                    <div class="tank-info">
+                        <span id="reservoir-level">400</span>L (<span id="reservoir-percent">20</span>%)
+                        <div class="valve-status" id="tap-status">Torneira: Aberta</div>
+                    </div>
+                </div>
+                
+                <!-- Caixa d'água interna -->
+                <div class="internal-tank">
+                    <div class="tank-label">Caixa d'Água (500L)</div>
+                    <div class="water-container">
+                        <div class="water" id="tank-water"></div>
+                    </div>
+                    <div class="tank-info">
+                        <span id="tank-level">0</span>L (<span id="tank-percent">0</span>%)
+                        <div class="pump-status" id="pump-status">Bomba: Desligada</div>
+                    </div>
+                </div>
+                
+                <!-- Tubulação -->
+                <div class="pipe"></div>
+                <div class="pump-icon">⛽</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button id="speed-btn">⏩ Velocidade: Normal</button>
+            <button id="pause-btn">⏸️ Pausar</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
